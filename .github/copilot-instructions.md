@@ -54,15 +54,30 @@
 6. 3つの監査エージェントに監査を委譲する
 7. Must 指摘が残れば修正ループ（最大3回）
 8. コミット・プッシュし、PR を作成する（`gh pr create`）
+   - PR 本文に `Closes #XX` を必ず記載する（plan.md の Issue 対応表を参照）
 9. PR の CI を監視する（失敗時は修正→再プッシュ、最大3回）
 10. release-manager に最終判定を委譲する
 11. **人間の最終承認を得てからマージする**（自動マージは禁止）
+12. マージ後の Issue/Project 検証（独立監査）
+    - `issue-lifecycle` ワークフローが対象 Issue を自動 Close する
+    - GitHub Projects のステータスが「Done」に自動更新される
+    - plan.md の Done セクションとの整合性を確認する
 
 ### 停止条件
 
 - ポリシー違反（P-001〜P-003）の検出
 - 修正ループが3回を超えた場合
 - plan.md の Next が空の場合
+
+## Issue Lifecycle（Issue / Project 連動）
+
+- PR 本文には必ず `Closes #XX` を記載し、完了する Issue を明示する。
+- `issue-lifecycle` ワークフロー（`.github/workflows/issue-lifecycle.yml`）が PR マージ時に：
+  - PR 本文から `Closes/Resolves/Fixes #XX` を抽出する
+  - `plan.md` の Done セクションとの整合性を独立監査する
+  - 対象 Issue を自動 Close する
+- GitHub Projects の built-in ワークフローにより、Issue Close 時にステータスが「Done」に自動更新される。
+- 手動で Issue を Close する場合は `gh issue close #XX --comment "理由"` を使用する。
 
 ## Review & Audit Attitude
 
