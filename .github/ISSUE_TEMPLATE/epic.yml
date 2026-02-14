@@ -1,0 +1,33 @@
+name: "エピック（Epic）"
+description: "複数のフィーチャーをまとめる大きな単位"
+title: "[Epic] "
+labels: ["epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: "ゴール"
+      description: "このエピックで達成したいこと"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: "スコープ"
+      description: "含まれるフィーチャーや作業の一覧"
+    validations:
+      required: true
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: "成功条件"
+      description: "完了と判断できる基準"
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: "リスク・懸念事項"
+      description: "既知のリスクや検討が必要な事項"
+    validations:
+      required: false

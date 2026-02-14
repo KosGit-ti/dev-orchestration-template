@@ -1,0 +1,99 @@
+# =============================================================================
+# プロジェクト設定ファイル
+# =============================================================================
+# このファイルを編集し、scripts/bootstrap.sh を実行すると
+# テンプレート内の {{PLACEHOLDER}} が自動置換されます。
+#
+# 使い方:
+#   1. このファイルの値を自分のプロジェクトに合わせて編集する
+#   2. bash scripts/bootstrap.sh を実行する
+#   3. 生成されたファイルを確認し、必要に応じて手動で調整する
+# =============================================================================
+
+# --- プロジェクト基本情報 ---
+project:
+  name: "my-project"                      # リポジトリ名（英語、ケバブケース）
+  display_name: "My Project"              # 表示名（日本語可）
+  description: "プロジェクトの説明"         # 1行の説明
+  purpose: "このプロジェクトの目的を記載"   # 詳細な目的
+  scope_in: |                              # スコープ内
+    - 対象とする機能1
+    - 対象とする機能2
+  scope_out: |                             # スコープ外
+    - 除外する機能1
+    - 除外する機能2
+  owner: "githypn"                         # GitHub ユーザー名または Org
+
+# --- 言語・ツールチェイン ---
+toolchain:
+  language: "python"                       # python | typescript | rust | go | other
+  version: "3.11"                          # 言語バージョン
+  package_manager: "uv"                    # uv | pip | npm | pnpm | cargo | go mod
+  linter: "ruff check ."                   # lint コマンド
+  formatter: "ruff format --check ."       # format チェックコマンド
+  type_checker: "mypy src/"                # 型チェックコマンド（なければ空文字）
+  test_runner: "pytest -q --tb=short"      # テストコマンド
+  run_prefix: "uv run"                     # コマンド実行プレフィックス（uv run, npx, etc.）
+
+# --- ソースコード構成 ---
+source:
+  src_dir: "src"                           # ソースディレクトリ
+  package_name: "my_package"               # パッケージ名（Python なら src/ 直下のフォルダ名）
+  modules:                                 # モジュール一覧（用途を記載）
+    - name: "core"
+      description: "型、例外、共通ユーティリティ"
+    - name: "domain"
+      description: "ドメインロジック"
+    # 必要に応じて追加
+
+# --- ロードマップ ---
+roadmap:
+  phases:
+    - id: 0
+      name: "Foundation"
+      goal: "CI 品質ゲート確立、リポジトリ基盤整備"
+      duration: "1〜2 週間"
+    - id: 1
+      name: "MVP"
+      goal: "最小限の機能パイプラインを確立"
+      duration: "2〜4 週間"
+    - id: 2
+      name: "Quality"
+      goal: "制約・品質フレームワークの実装"
+      duration: "2〜3 週間"
+    - id: 3
+      name: "Hardening"
+      goal: "機能拡充、設定管理強化"
+      duration: "3〜4 週間"
+    - id: 4
+      name: "Advanced"
+      goal: "高度な機能、研究開発"
+      duration: "継続"
+
+# --- ポリシー ---
+policies:
+  # 禁止操作のパターン（CI policy_check で使用）
+  forbidden_imports: []                    # 例: ["requests", "httpx", "websocket"]
+  forbidden_patterns: []                   # 例: ["AKIA[0-9A-Z]{16}"]
+  # プロジェクト固有のポリシーをここに定義
+  custom: []
+
+# --- GitHub 設定 ---
+github:
+  labels:
+    - { name: "epic",             color: "7928a1", description: "Epic" }
+    - { name: "story",            color: "0075ca", description: "Story" }
+    - { name: "task",             color: "e4e669", description: "Task" }
+    - { name: "bug",              color: "d73a4a", description: "Bug" }
+    - { name: "phase:0",          color: "c5def5", description: "Phase 0" }
+    - { name: "phase:1",          color: "bfd4f2", description: "Phase 1" }
+    - { name: "phase:2",          color: "b4c7e7", description: "Phase 2" }
+    - { name: "phase:3",          color: "a8b8d9", description: "Phase 3" }
+    - { name: "phase:4",          color: "9caacb", description: "Phase 4" }
+    - { name: "priority:high",    color: "b60205", description: "高優先度" }
+    - { name: "priority:medium",  color: "fbca04", description: "中優先度" }
+    - { name: "priority:low",     color: "0e8a16", description: "低優先度" }
+    - { name: "plan:short-term",  color: "d4c5f9", description: "短期計画" }
+    - { name: "plan:mid-term",    color: "c2e0c6", description: "中期計画" }
+    - { name: "plan:long-term",   color: "fef2c0", description: "長期計画" }
+  project_name: "開発ロードマップ"

@@ -1,0 +1,74 @@
+# =============================================================================
+# CI ワークフロー（汎用テンプレート）
+# =============================================================================
+# このファイルはプロジェクトの言語・ツールに合わせてカスタマイズしてください。
+# bootstrap.sh 実行時に project-config.yml の設定で自動置換されます。
+#
+# 対応例:
+#   Python (uv)     → uv sync / uv run ruff / uv run mypy / uv run pytest
+#   Node.js (pnpm)  → pnpm install / pnpm lint / pnpm typecheck / pnpm test
+#   Rust (cargo)    → cargo build / cargo clippy / cargo test
+#   Go              → go build / golangci-lint run / go test
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 言語セットアップ（プロジェクトに合わせて1つ選択）
+      # ---------------------------------------------------------------
+
+      # --- Python ---
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.11"
+      # - name: Install uv
+      #   run: python -m pip install --upgrade pip && python -m pip install uv
+      # - name: Sync dependencies
+      #   run: uv sync --all-extras --dev
+
+      # --- Node.js ---
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"
+      # - name: Install dependencies
+      #   run: npm ci
+
+      # --- Rust ---
+      # - uses: dtolnay/rust-toolchain@stable
+      # - uses: Swatinem/rust-cache@v2
+
+      # --- Go ---
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: "1.22"
+
+      # ---------------------------------------------------------------
+      # 品質チェック（プロジェクトに合わせてコメント解除・編集）
+      # ---------------------------------------------------------------
+
+      - name: Policy check
+        run: python ci/policy_check.py
+
+      # - name: Lint
+      #   run: {{RUN_PREFIX}} {{LINTER}}
+
+      # - name: Format check
+      #   run: {{RUN_PREFIX}} {{FORMATTER}}
+
+      # - name: Type check
+      #   run: {{RUN_PREFIX}} {{TYPE_CHECKER}}
+
+      # - name: Test
+      #   run: {{RUN_PREFIX}} {{TEST_RUNNER}}
