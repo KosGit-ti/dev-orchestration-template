@@ -1,0 +1,41 @@
+{
+  // このリポジトリで推奨する VS Code 拡張機能
+  // リポジトリを開くと「推奨拡張機能をインストールしますか？」と表示される
+  "recommendations": [
+    // --- 必須：Copilot ---
+    "github.copilot-chat",
+
+    // --- 必須：GitHub 連携（PR レビュー・マージ・Actions 確認） ---
+    "github.vscode-pull-request-github",
+    "github.vscode-github-actions",
+
+    // --- 必須：Python 開発 ---
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.mypy-type-checker",
+    "ms-python.debugpy",
+
+    // --- 必須：Git 操作・履歴 ---
+    "eamodio.gitlens",
+
+    // --- 推奨：Jupyter / データ分析 ---
+    "ms-toolsai.jupyter",
+    "ms-toolsai.jupyter-renderers",
+    "ms-toolsai.datawrangler",
+
+    // --- 推奨：ドキュメント・設定ファイル ---
+    "davidanson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one",
+    "redhat.vscode-yaml",
+    "editorconfig.editorconfig",
+
+    // --- 推奨：コード品質・見やすさ ---
+    "oderwat.indent-rainbow",
+    "kevinrose.vsc-python-indent",
+    "mechatroner.rainbow-csv",
+    "vscode-icons-team.vscode-icons",
+
+    // --- 推奨：日本語パック ---
+    "ms-ceintl.vscode-language-pack-ja"
+  ]
+}

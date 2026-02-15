@@ -4,6 +4,8 @@ Copilot エージェント駆動の開発オーケストレーション テン�
 
 あらゆるプロジェクトに適用可能な、計画→実装→監査→リリースの自動化フレームワークを提供する。
 
+> **初めての方へ**: [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) に、macOS 向けのセットアップ手順・開発概念の解説・VS Code の設定方法をまとめています。
+
 ## 特徴
 
 - **SSOT（Single Source of Truth）ドキュメント体系**: 要件・ポリシー・制約・計画・アーキテクチャを `docs/` に集約
