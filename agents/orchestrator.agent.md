@@ -52,7 +52,7 @@
 
 ## Step 10: Copilot コードレビュー対応ループ
 
-PR 作成後、CI 通過後に Copilot コードレビューの指摘を自動で取得・対応する。
+PR 作成後、CI 通過後に Copilot コードレビューの指摘を自動で取得・対応・返信する。
 最大3回のイテレーションで以下を繰り返す。
 
 ### 手順
@@ -68,6 +68,7 @@ while review_iteration < 3:
        - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
        - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` でインラインコメントを取得
        - state が CHANGES_REQUESTED または COMMENTED のレビューを対象とする
+       - 自分の返信済みコメントを除外し、未対応コメントのみ抽出する
 
     3. 指摘を分類する
        - copilot-code-review-instructions.md の基準に従い Must / Should / Nice に分類
@@ -83,11 +84,16 @@ while review_iteration < 3:
        - implementer が修正を実施
        - 修正後にローカル CI を再実行（失敗なら修正）
 
-    6. コミット・プッシュする
+    6. 各レビューコメントに返信する
+       - 修正した指摘：対応内容とコミットハッシュを返信する
+       - Nice でスキップした指摘：スキップ理由を返信する
+       - 返信コマンド（後述）を使用する
+
+    7. コミット・プッシュする
        - コミットメッセージ: "fix: Copilot レビュー指摘対応 (iteration N)"
        - プッシュにより自動で CI + Copilot 再レビューがトリガーされる
 
-    7. review_iteration++
+    8. review_iteration++
 ```
 
 ### レビューコメント取得コマンド
@@ -99,14 +105,37 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
 
 # インラインコメント（ファイル・行番号・提案）を取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
-  --jq '.[] | {author: .user.login, path: .path, line: .line, body: .body, suggestion: .body | test("```suggestion")}'
+  --jq '.[] | {author: .user.login, path: .path, line: .line, body: .body, id: .id, in_reply_to_id: .in_reply_to_id}'
+
+# 未返信のコメントのみ抽出する（in_reply_to_id がないトップレベルコメント）
+gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
+  --jq '[.[] | select(.in_reply_to_id == null)] | map({id, author: .user.login, path, line, body})'
 ```
+
+### レビューコメント返信コマンド
+
+各コメントに対して返信する。返信は元コメントのスレッドに紐づく。
+
+```bash
+# コメントに返信する（comment_id はインラインコメントの ID）
+gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
+  -f body="対応しました。<修正内容の説明>（<コミットハッシュ>）。"
+```
+
+### 返信テンプレート
+
+対応内容に応じて以下のテンプレートを使用する：
+
+- **修正済み**: 「対応しました。<具体的な修正内容>（<コミットハッシュ>）。」
+- **Nice でスキップ**: 「ご指摘ありがとうございます。改善提案として認識しました。今回のスコープ外のため次回以降で検討します。」
+- **対応不要と判断**: 「ご指摘ありがとうございます。<対応不要と判断した技術的理由>。」
 
 ### 注意事項
 
 - Copilot レビューが設定されていない場合（レビューが来ない場合）は30秒待機後にスキップする
 - レビュアーが Copilot 以外（人間）の場合は、指摘を表示して人間に判断を委ねる
 - 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
+- 全てのレビューコメントには必ず返信する（未返信のコメントを残さない）
 
 ## 停止条件
 

@@ -59,6 +59,7 @@
 10. Copilot コードレビュー対応ループ（最大3回）
     - `gh api` でレビューコメントを取得し、Must/Should/Nice に分類する
     - Must/Should 指摘があれば implementer に修正を委譲し、再プッシュする
+    - 各レビューコメントに対応結果を `gh api .../comments/{id}/replies` で返信する
     - 再プッシュで Copilot 再レビューがトリガーされ、ループを繰り返す
     - 指摘がゼロまたは approve 済みならループ終了
 11. release-manager に最終判定を委譲する
