@@ -160,19 +160,46 @@ CI が通過しても IDE で型エラーが残ることがある。
 PR 作成・CI通過後に Copilot コードレビューの指摘を自動で取得・対応・返信する。
 最大3回のイテレーションで以下を繰り返す。
 
-#### 重要：再レビュー検出の仕組み
+#### 設計原則（4つ）
 
-Copilot の再レビューを正しく検出するには、**リクエスト前後のレビュー数を比較**する必要がある。
-直前のレビュー state（CHANGES_REQUESTED 等）を見るだけでは、**古いレビューを新しいレビューと誤認**する。
-これが「再レビューを待っているのに即座に完了扱いになる」バグの原因である。
+以下の4つの原則はすべて過去のバグ・障害から得た教訓である。**省略・簡略化は禁止**。
+
+1. **CI通過とレビュー完了は独立した事象**
+   - CI（`gh pr checks --watch`）の完了は「ビルドとテストが通った」ことを意味するだけ
+   - Copilot レビューの完了は「レビューコメントが返ってきた」ことを意味する
+   - この2つを混同すると「CI が通ったので再レビューも完了した」と誤認する
+
+2. **レビュー検出はカウント比較で行う**
+   - state（CHANGES_REQUESTED 等）だけで判定すると、古いレビューを新しいレビューと誤認する
+   - 必ずリクエスト前後のレビュー数を比較する
+
+3. **レビューコメントは時間差で到着する**
+   - Copilot は1つのレビューで複数コメントを生成するが、それらは同時に到着しない
+   - 新しいレビューを検出した後、コメント数が安定するまで追加待機する（コメント安定化フェーズ）
+
+4. **再レビュー依頼は Remove → Re-add で行う**
+   - `--add-reviewer` だけでは再レビューがトリガーされないことがある
+   - 確実にトリガーするために、レビュアーを一度削除してから再追加する
 
 ```
 review_iteration = 0
 while review_iteration < 3:
     1. レビュー完了を待機する
-       - 初回は `gh pr checks <PR_NUMBER> --watch` で CI + レビュー status を監視
+       - 初回は `gh pr checks <PR_NUMBER> --watch` で CI status を監視する
+       - **CI が通過してもレビューは完了していない可能性がある**（設計原則 #1）
+       - CI 通過後、Copilot レビューの到着を別途確認する（下記ポーリング）
        - 2回目以降は「再レビューリクエストと待機手順」（後述）で新レビューを待機する
-       - CI が通過したら次のステップへ進む
+
+    1.5. レビュー到着をポーリングで確認する（初回のみ）
+       - 30秒間隔 × 最大20回（最大10分）で Copilot レビューの存在を確認する
+       - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'`
+       - レビュー数が 1 以上になったら次のステップへ
+       - Copilot レビューが設定されていない場合（10分以内に来ない場合）はスキップ可
+
+    1.7. コメント安定化フェーズ（設計原則 #3）
+       - レビューを検出した後、コメントが全て到着するまで追加で待機する
+       - 15秒間隔 × 最大8回（最大2分）でコメント数をポーリングする
+       - 3回連続でコメント数が同じなら安定したと判断し、次のステップへ進む
 
     2. レビューコメントを取得する
        - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
@@ -201,6 +228,11 @@ while review_iteration < 3:
        - 「再レビューリクエストと待機手順」に従う（後述）
        - **タイムアウトした場合は「指摘なし」と判定せず、ユーザーに報告して停止する**
 
+    8.5. コメント安定化フェーズ（設計原則 #3）
+       - 新しいレビューを検出した後、コメント数が安定するまで追加で待機する
+       - 15秒間隔 × 最大8回（最大2分）でコメント数をポーリングする
+       - 3回連続でコメント数が同じなら安定したと判断する
+
     9. 新しいレビューが届いたらステップ 2 に戻る
 
     10. review_iteration++
@@ -221,18 +253,22 @@ BEFORE_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
   --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
 echo "現在の Copilot レビュー数: $BEFORE_COUNT"
 
-# (b) レビューを正式にリクエストする（2つの方法を両方実行する）
+# (b) レビュアーを一度削除してから再追加する（設計原則 #4: Remove → Re-add）
+# add だけではレビューがトリガーされないことがあるため、必ず削除→再追加する
+gh api "repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers" \
+  --method DELETE -f 'reviewers[]=copilot-pull-request-reviewer' 2>/dev/null || true
+sleep 5  # 削除の反映を待つ
 gh api "repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers" \
   --method POST -f 'reviewers[]=copilot-pull-request-reviewer' 2>/dev/null || true
 gh pr edit {pr_number} --add-reviewer "copilot-pull-request-reviewer" 2>/dev/null || true
 
-# (c) 新しいレビューが届くまで最大 5 分間ポーリングする（30秒間隔 × 10回）
+# (c) 新しいレビューが届くまで最大 10 分間ポーリングする（30秒間隔 × 20回）
 REVIEW_RECEIVED=false
-for i in $(seq 1 10); do
+for i in $(seq 1 20); do
   sleep 30
   CURRENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
     --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
-  echo "待機中... ($i/10, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
+  echo "待機中... ($i/20, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
   if [ "$CURRENT_COUNT" -gt "$BEFORE_COUNT" ]; then
     REVIEW_RECEIVED=true
     echo "✅ 新しい Copilot レビューを検出しました"
@@ -240,9 +276,31 @@ for i in $(seq 1 10); do
   fi
 done
 
-# (d) タイムアウト判定
+# (d) コメント安定化フェーズ（レビュー検出後に実行）
+if [ "$REVIEW_RECEIVED" = "true" ]; then
+  echo "コメント安定化フェーズ: コメントが全て到着するのを待機します..."
+  PREV_COMMENT_COUNT=0
+  STABLE_COUNT=0
+  for j in $(seq 1 8); do
+    sleep 15
+    COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/comments" --jq 'length')
+    echo "  コメント数: $COMMENT_COUNT (安定カウント: $STABLE_COUNT/3)"
+    if [ "$COMMENT_COUNT" -eq "$PREV_COMMENT_COUNT" ]; then
+      STABLE_COUNT=$((STABLE_COUNT + 1))
+      if [ "$STABLE_COUNT" -ge 3 ]; then
+        echo "✅ コメント数が安定しました（$COMMENT_COUNT 件）"
+        break
+      fi
+    else
+      STABLE_COUNT=0
+    fi
+    PREV_COMMENT_COUNT=$COMMENT_COUNT
+  done
+fi
+
+# (e) タイムアウト判定
 if [ "$REVIEW_RECEIVED" = "false" ]; then
-  echo "⚠️ Copilot 再レビューが 5 分以内に届きませんでした"
+  echo "⚠️ Copilot 再レビューが 10 分以内に届きませんでした"
   echo "手動で PR ページを確認してください: $(gh pr view {pr_number} --json url -q .url)"
   # → パイプラインを一時停止し、ユーザーに報告する
 fi
@@ -250,11 +308,10 @@ fi
 
 ##### タイムアウト時の対応（必須遵守）
 
-再レビューが 5 分以内に届かなかった場合、以下の対応を取る：
+再レビューが 10 分以内に届かなかった場合、以下の対応を取る：
 
 1. **ユーザーに報告して判断を仰ぐ**（推奨）
-2. **追加待機**：さらに 5 分待機する（合計 10 分まで。10分を超えて待機しない）
-3. **PR URL を提示して手動確認を依頼する**
+2. **PR URL を提示して手動確認を依頼する**
 
 **絶対に禁止**: タイムアウト後に「指摘はすべて対処済み」「新しい指摘なし」と自動判定して先に進むこと。
 
@@ -286,9 +343,12 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
 
 #### 注意事項
 
-- Copilot レビューが設定されていない場合（初回レビューが60秒以内に来ない場合）はスキップ可
-- **再レビュー待機では必ず「再レビューリクエストと待機手順」に従い、レビュー数の増減で判定する**
+- Copilot レビューが設定されていない場合（初回レビューが10分以内に来ない場合）はスキップ可
+- **CI の完了とレビューの完了は独立事象** — CI 通過をレビュー完了と混同しない（設計原則 #1）
+- **再レビュー待機では必ず「再レビューリクエストと待機手順」に従い、レビュー数の増減で判定する**（設計原則 #2）
 - **`state` の値だけで判定しない**（古いレビューの state を誤認するため）
+- **新しいレビュー検出後はコメント安定化フェーズを必ず実行する**（設計原則 #3）
+- **再レビュー依頼は Remove → Re-add で行う**（設計原則 #4）
 - レビュアーが Copilot 以外（人間）の場合は、指摘を表示して人間に判断を委ねる
 - 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
 - 全てのレビューコメントには必ず返信する（未返信のコメントを残さない）
@@ -378,3 +438,54 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
 - [ ] 人間がマージを承認する
 - [ ] plan.md を更新する
 ```
+
+## 汎用リクエストモード（General Request）
+
+自動実行モード・計画修正モードのいずれのトリガーにも該当しないリクエスト（改善提案、調査依頼、設定変更、リファクタリング指示など）の場合にこのモードを適用する。
+
+### 適用判定
+
+ユーザーのリクエストが以下のいずれかに該当する場合、汎用リクエストモードとして実行する：
+- 改善提案・リファクタリング指示
+- 設定変更・構成変更
+- 調査依頼・分析依頼の結果としてコード変更が発生
+- バグ報告への対応
+- エージェント定義やインストラクションの更新
+
+### 実行フロー
+
+```
+1. リクエストの分析
+   - ユーザーの要求を分解する（what / why / scope）
+   - 影響範囲を特定する（変更対象ファイル、依存関係）
+   - 対応方針を策定する
+
+2. 実装の委譲
+   - コードファイルの変更は implementer に委譲する
+   - テストが必要な場合は test-engineer に委譲する
+   - ドキュメントのみの場合は自ら実行可
+
+3. 品質検証（コードを変更した場合は必須）
+   a. ローカル CI の実行（具体的コマンドは docs/runbook.md を参照）
+   b. 全体エラー検証
+      - get_errors ツール（filePaths 省略）でワークスペース全体のエラーがゼロであることを確認する
+   c. 変更ファイルの個別検証
+      - 変更したファイルに対して get_errors ツール（filePaths 指定）で個別検証する
+   d. セルフレビュー
+      - 変更内容がポリシー（P-001〜P-003）に違反していないか自己確認する
+
+4. 失敗時の修正ループ（最大3回）
+   - CI 失敗またはエラー残存時は implementer に修正を指示し、3. に戻る
+
+5. コミット・プッシュ
+   - 検証を通過したら変更をコミット・プッシュする
+```
+
+### 品質検証の省略条件
+
+以下の**すべて**を満たす場合のみ、品質検証を省略可能：
+- `docs/` 配下のドキュメント**のみ**の変更である
+- コードファイルへの影響がない
+- エージェント定義ファイルの変更もない
+
+上記を満たさない場合（コード・エージェント定義・設定ファイルのいずれかを変更した場合）は品質検証を**省略してはならない**。
