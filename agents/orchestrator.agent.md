@@ -57,170 +57,155 @@
 ## Step 10: Copilot コードレビュー対応ループ
 
 PR 作成後、CI 通過後に Copilot コードレビューの指摘を自動で取得・対応・返信する。
-最大3回のイテレーションで以下を繰り返す。
+最大3回のイテレーション（Bounded Recursion）で以下を繰り返す。
+
+### 前提条件（リポジトリ設定）
+
+このステップが正しく動作するために、以下のリポジトリ設定が必要である。
+設定手順は `docs/runbook.md` の「Copilot レビュー設定」セクションを参照。
+
+1. **Ruleset: Review new pushes** — リポジトリ設定（Settings → Code review → Copilot）で
+   「Review new pushes to existing pull requests」を有効にする。
+   これにより push だけで Copilot レビューが自動トリガーされる。
+   API による手動の再レビューリクエスト（Remove → Re-add）は不要になる。
+
+2. **GitHub App Token / PAT でのプッシュ** — エージェントが `GITHUB_TOKEN` でプッシュすると、
+   GitHub の無限ループ防止機能により Copilot の自動レビューが発火しない。
+   GitHub App Token（推奨）または PAT を使用してプッシュする。
 
 ### 設計原則（4つ）
 
 以下の4つの原則はすべて過去のバグ・障害から得た教訓である。**省略・簡略化は禁止**。
 
-1. **CI通過とレビュー完了は独立した事象**
-   - CI（`gh pr checks --watch`）の完了は「ビルドとテストが通った」ことを意味するだけ
+1. **Push 型アーキテクチャ（Pull 型からの転換）**
+   - GitHub API による再レビューリクエスト（Pull 型）は Bot 仕様により無視される
+   - 代わりに Ruleset の「Review new pushes」を利用し、push のみでレビューをトリガーする（Push 型）
+   - 旧方式の Remove → Re-add は**廃止**する
+
+2. **回数制限（Bounded Recursion）**
+   - 時間ベースのタイムアウト（10分ポーリング）ではなく、**最大3回のイテレーション**でループを制限する
+   - AI 同士のレビュー・修正が発散（振動）するリスクを防ぐ
+   - 上限に達したら Human-in-the-loop でエスカレーションする
+
+3. **静的解析ファースト**
+   - AI レビューの**前に** Linter / Formatter / Unit Test を強制的にパスさせる
+   - フォーマットや明白なエラーで AI レビューのトークンを浪費するのを防ぐ
+
+4. **CI 通過とレビュー完了は独立した事象**
+   - CI の完了は「ビルドとテストが通った」ことを意味するだけ
    - Copilot レビューの完了は「レビューコメントが返ってきた」ことを意味する
-   - この2つを混同すると「CI が通ったので再レビューも完了した」と誤認する
-
-2. **レビュー検出はカウント比較で行う**
-   - state（CHANGES_REQUESTED 等）だけで判定すると、古いレビューを新しいレビューと誤認する
-   - 必ずリクエスト前後のレビュー数を比較する
-
-3. **レビューコメントは時間差で到着する**
-   - Copilot は1つのレビューで複数コメントを生成するが、それらは同時に到着しない
-   - 新しいレビューを検出した後、コメント数が安定するまで追加待機する（コメント安定化フェーズ）
-
-4. **再レビュー依頼は Remove → Re-add で行う**
-   - `--add-reviewer` だけでは再レビューがトリガーされないことがある
-   - 確実にトリガーするために、レビュアーを一度削除してから再追加する
+   - この2つを混同しない
 
 ### 手順
 
 ```
 review_iteration = 0
 while review_iteration < 3:
-    1. レビュー完了を待機する
-       - 初回は `gh pr checks <PR_NUMBER> --watch` で CI status を監視する
-       - **CI が通過してもレビューは完了していない可能性がある**（設計原則 #1）
-       - CI 通過後、Copilot レビューの到着を別途確認する（下記ポーリング）
-       - 2回目以降は「再レビューリクエストと待機手順」（後述）で新レビューを待機する
+    1. CI 通過を確認する
+       - `gh pr checks <PR_NUMBER> --watch` で CI ステータスを監視する
+       - CI が失敗した場合は修正フローに戻る
+       - **CI 通過 ≠ レビュー完了**（設計原則 #4）
 
-    1.5. レビュー到着をポーリングで確認する（初回のみ）
-       - 30秒間隔 × 最大20回（最大10分）で Copilot レビューの存在を確認する
-       - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length'`
-       - レビュー数が 1 以上になったら次のステップへ
-       - Copilot レビューが設定されていない場合（10分以内に来ない場合）はスキップ可
+    2. Copilot レビューの到着を待機する
+       - 初回: レビューカウントをポーリングで監視する（後述）
+       - 2回目以降: push により Ruleset が自動トリガーした再レビューを待機する（設計原則 #1）
+       - レビュー検出後、コメント安定化フェーズを実行する（後述）
 
-    1.7. コメント安定化フェーズ（設計原則 #3）
-       - レビューを検出した後、コメントが全て到着するまで追加で待機する
-       - 15秒間隔 × 最大8回（最大2分）でコメント数をポーリングする
-       - 3回連続でコメント数が同じなら安定したと判断し、次のステップへ進む
-
-    2. レビューコメントを取得する
+    3. レビューコメントを取得する
        - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
        - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` でインラインコメントを取得
-       - 2回目以降は、前回のイテレーション以降に追加された新しいレビュー/コメントのみを対象とする
+       - 2回目以降は前回のイテレーション以降に追加された新しいレビュー/コメントのみを対象とする
        - 自分の返信済みコメントを除外し、未対応コメントのみ抽出する
 
-    3. 指摘を分類する
-       - copilot-code-review-instructions.md の基準に従い Must / Should / Nice に分類
+    4. 指摘を分類する
        - Must: マージ前に修正必須 → 修正対象
        - Should: 強く推奨 → 修正対象（時間が許せば）
        - Nice: 改善提案 → 今回はスキップ可
 
-    4. Must / Should の指摘がゼロなら → ループ終了
-       - レビューで approve 済み or 指摘なしなら Step 11 へ
+    5. Must / Should の指摘がゼロなら → ループ終了
 
-    5. 修正を実施する
+    6. 修正を実施する（静的解析ファースト — 設計原則 #3）
        - 各指摘の対象ファイル・行番号・提案内容を implementer に伝達
        - implementer が修正を実施
-       - 修正後にローカル CI を再実行（失敗なら修正）
+       - **修正後にローカル CI を再実行し、通過を確認する**
+       - **get_errors でエラーゼロを確認する**
+       - 静的解析が通らない修正は AI レビューに回さない
 
-    6. 各レビューコメントに返信する
-       - 修正した指摘：対応内容とコミットハッシュを返信する
-       - Nice でスキップした指摘：スキップ理由を返信する
-       - 返信コマンド（後述）を使用する
+    7. 各レビューコメントに返信する
 
-    7. コミット・プッシュする
+    8. コミット・プッシュする
        - コミットメッセージ: "fix: Copilot レビュー指摘対応 (iteration N)"
-       - プッシュにより CI が自動トリガーされる
+       - **GitHub App Token / PAT でプッシュする**（設計原則 #1 の前提条件）
+       - push により Ruleset が Copilot 再レビューを自動トリガーする
+       - API による再レビューリクエストは不要
 
-    8. Copilot レビューを再リクエストし、新しいレビューを待機する
-       - 「再レビューリクエストと待機手順」に従う（後述）
-       - **タイムアウトした場合は「指摘なし」と判定せず、ユーザーに報告して停止する**
-
-    8.5. コメント安定化フェーズ（設計原則 #3）
-       - 新しいレビューを検出した後、コメント数が安定するまで追加で待機する
-       - 15秒間隔 × 最大8回（最大2分）でコメント数をポーリングする
-       - 3回連続でコメント数が同じなら安定したと判断する
-
-    9. 新しいレビューが届いたらステップ 2 に戻る
-
-    10. review_iteration++
+    9. review_iteration++
+    → ステップ 1 に戻る
 ```
 
-### 再レビューリクエストと待機手順（最重要）
+### レビュー到着待機手順
 
-以下の手順を**正確に**実行する。手順の省略や短縮は禁止する。
-
-**禁止事項**:
-- 直前のレビューの `state` だけを見て新しいレビューの到着を判定すること（古いレビューを誤認する）
-- タイムアウト後に「指摘はすべて対処済み」「新しい指摘なし」と自動判定すること
-- 60秒未満のタイムアウトで待機を打ち切ること
+PR 作成直後（初回）および push 後（再レビュー）の Copilot レビュー到着を待機する手順。
+Push 型アーキテクチャにより、再レビューリクエストの API 呼び出しは不要。
 
 ```bash
-# (a) リクエスト前のレビュー数を記録する
+# (a) 現在のレビュー数を記録する
 BEFORE_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
   --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
-echo "現在の Copilot レビュー数: $BEFORE_COUNT"
 
-# (b) レビュアーを一度削除してから再追加する（設計原則 #4: Remove → Re-add）
-# add だけではレビューがトリガーされないことがあるため、必ず削除→再追加する
-gh api "repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers" \
-  --method DELETE -f 'reviewers[]=copilot-pull-request-reviewer' 2>/dev/null || true
-sleep 5  # 削除の反映を待つ
-gh api "repos/{owner}/{repo}/pulls/{pr_number}/requested_reviewers" \
-  --method POST -f 'reviewers[]=copilot-pull-request-reviewer' 2>/dev/null || true
-gh pr edit {pr_number} --add-reviewer "copilot-pull-request-reviewer" 2>/dev/null || true
-
-# (c) 新しいレビューが届くまで最大 10 分間ポーリングする（30秒間隔 × 20回）
+# (b) 新しいレビューが届くまでポーリングする（30秒間隔 × 最大20回 = 最大10分）
 REVIEW_RECEIVED=false
 for i in $(seq 1 20); do
   sleep 30
   CURRENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
     --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
-  echo "待機中... ($i/20, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
+  echo "レビュー待機中... ($i/20, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
   if [ "$CURRENT_COUNT" -gt "$BEFORE_COUNT" ]; then
     REVIEW_RECEIVED=true
-    echo "✅ 新しい Copilot レビューを検出しました"
+    echo "✅ Copilot レビューを検出しました"
     break
   fi
 done
 
-# (d) コメント安定化フェーズ（レビュー検出後に実行）
+# (c) コメント安定化フェーズ（レビュー検出後に実行）
 if [ "$REVIEW_RECEIVED" = "true" ]; then
-  echo "コメント安定化フェーズ: コメントが全て到着するのを待機します..."
-  PREV_COMMENT_COUNT=0
-  STABLE_COUNT=0
-  for j in $(seq 1 8); do
+  echo "コメント安定化フェーズに入ります..."
+  LAST_COMMENT_COUNT=0
+  STABLE_CHECKS=0
+  for i in $(seq 1 8); do
     sleep 15
-    COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/comments" --jq 'length')
-    echo "  コメント数: $COMMENT_COUNT (安定カウント: $STABLE_COUNT/3)"
-    if [ "$COMMENT_COUNT" -eq "$PREV_COMMENT_COUNT" ]; then
-      STABLE_COUNT=$((STABLE_COUNT + 1))
-      if [ "$STABLE_COUNT" -ge 3 ]; then
-        echo "✅ コメント数が安定しました（$COMMENT_COUNT 件）"
+    CURRENT_COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/comments" \
+      --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
+    echo "コメント安定化待機... ($i/8, コメント数: $CURRENT_COMMENT_COUNT)"
+    if [ "$CURRENT_COMMENT_COUNT" = "$LAST_COMMENT_COUNT" ] && [ "$CURRENT_COMMENT_COUNT" -gt "0" ]; then
+      STABLE_CHECKS=$((STABLE_CHECKS + 1))
+      if [ "$STABLE_CHECKS" -ge 3 ]; then
+        echo "✅ コメントが安定しました（$CURRENT_COMMENT_COUNT 件）"
         break
       fi
     else
-      STABLE_COUNT=0
+      STABLE_CHECKS=0
     fi
-    PREV_COMMENT_COUNT=$COMMENT_COUNT
+    LAST_COMMENT_COUNT=$CURRENT_COMMENT_COUNT
   done
 fi
 
-# (e) タイムアウト判定
+# (d) タイムアウト判定
 if [ "$REVIEW_RECEIVED" = "false" ]; then
-  echo "⚠️ Copilot 再レビューが 10 分以内に届きませんでした"
-  echo "手動で PR ページを確認してください: $(gh pr view {pr_number} --json url -q .url)"
-  # → パイプラインを一時停止し、ユーザーに報告する
+  # 初回: Copilot レビューが設定されていない可能性がある → スキップ可
+  # 再レビュー: Ruleset 設定か認証トークンに問題がある → ユーザーに報告
+  echo "⚠️ Copilot レビューが 10 分以内に届きませんでした"
+  echo "以下を確認してください:"
+  echo "  1. Ruleset の 'Review new pushes' が有効か"
+  echo "  2. GitHub App Token / PAT でプッシュしているか"
+  echo "PR: $(gh pr view {pr_number} --json url -q .url)"
 fi
 ```
 
-#### タイムアウト時の対応（必須遵守）
+#### タイムアウト時の対応
 
-再レビューが 10 分以内に届かなかった場合、以下の対応を取る：
-
-1. **ユーザーに報告して判断を仰ぐ**（推奨）
-2. **PR URL を提示して手動確認を依頼する**
-
-**絶対に禁止**: タイムアウト後に「指摘はすべて対処済み」「新しい指摘なし」と自動判定して先に進むこと。
+- 初回レビュー（Copilot レビュー未設定のリポジトリ）: スキップして次へ進む
+- 再レビュー: **ユーザーに報告して判断を仰ぐ**（自動判定禁止）
 
 ### レビューコメント取得コマンド
 
@@ -258,14 +243,11 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
 
 ### 注意事項
 
-- Copilot レビューが設定されていない場合（初回レビューが10分以内に来ない場合）はスキップ可
-- **CI の完了とレビューの完了は独立事象** — CI 通過をレビュー完了と混同しない（設計原則 #1）
-- **再レビュー待機では必ず「再レビューリクエストと待機手順」に従い、レビュー数の増減で判定する**（設計原則 #2）
-- **`state` の値だけで判定しない**（古いレビューの state を誤認するため）
-- **新しいレビュー検出後はコメント安定化フェーズを必ず実行する**（設計原則 #3）
-- **再レビュー依頼は Remove → Re-add で行う**（設計原則 #4）
+- Copilot レビューが設定されていない場合（初回レビューが来ない場合）のみスキップ可
+- **Push 型アーキテクチャ**: push だけでレビューがトリガーされる（API による再リクエスト不要）
+- **回数制限**: 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
+- **静的解析ファースト**: 修正後は必ずローカル CI + get_errors を通過してからプッシュする
 - レビュアーが Copilot 以外（人間）の場合は、指摘を表示して人間に判断を委ねる
-- 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
 - 全てのレビューコメントには必ず返信する（未返信のコメントを残さない）
 
 ## 停止条件

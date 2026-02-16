@@ -1,0 +1,118 @@
+# =============================================================================
+# Staging ワークフロー（検証環境デプロイ・テスト）
+# =============================================================================
+# staging ブランチへの push 時に、品質ゲート + 統合テスト + 性能テストを実行する。
+# プロジェクトの言語・ツールに合わせてカスタマイズしてください。
+
+name: Staging
+
+on:
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 言語セットアップ（ci.yml と同じ設定を使用）
+      # ---------------------------------------------------------------
+
+      # --- Python ---
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.11"
+      # - name: Install uv
+      #   run: python -m pip install --upgrade pip && python -m pip install uv
+      # - name: Sync dependencies
+      #   run: uv sync --all-extras --dev
+
+      # --- Node.js ---
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"
+      # - name: Install dependencies
+      #   run: npm ci
+
+      # ---------------------------------------------------------------
+      # 品質チェック（ci.yml と同じチェックを実行）
+      # ---------------------------------------------------------------
+
+      - name: Policy check
+        run: python ci/policy_check.py
+
+      # - name: Lint
+      #   run: {{RUN_PREFIX}} {{LINTER}}
+
+      # - name: Format check
+      #   run: {{RUN_PREFIX}} {{FORMATTER}}
+
+      # - name: Type check
+      #   run: {{RUN_PREFIX}} {{TYPE_CHECKER}}
+
+      # - name: Test
+      #   run: {{RUN_PREFIX}} {{TEST_RUNNER}}
+
+  integration-test:
+    runs-on: ubuntu-latest
+    needs: quality-gate
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 言語セットアップ（quality-gate と同じ）
+      # ---------------------------------------------------------------
+
+      # --- Python ---
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.11"
+      # - name: Install uv
+      #   run: python -m pip install --upgrade pip && python -m pip install uv
+      # - name: Sync dependencies
+      #   run: uv sync --all-extras --dev
+
+      # ---------------------------------------------------------------
+      # 統合テスト（プロジェクトに合わせてカスタマイズ）
+      # ---------------------------------------------------------------
+
+      # - name: Integration tests
+      #   run: {{RUN_PREFIX}} {{TEST_RUNNER}} tests/ -v
+
+  performance-test:
+    runs-on: ubuntu-latest
+    needs: quality-gate
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # 言語セットアップ
+      # ---------------------------------------------------------------
+
+      # --- Python ---
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.11"
+      # - name: Install uv
+      #   run: python -m pip install --upgrade pip && python -m pip install uv
+      # - name: Sync dependencies
+      #   run: uv sync --all-extras --dev
+
+      # ---------------------------------------------------------------
+      # 性能テスト（プロジェクトに合わせてカスタマイズ）
+      # ---------------------------------------------------------------
+
+      # - name: Performance benchmark
+      #   run: echo "性能テストをここに記述する"

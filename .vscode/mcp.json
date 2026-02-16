@@ -1,13 +1,15 @@
 {
-  // ===== MCP サーバー設定 =====
-  // ワークスペースで使用する MCP サーバーを定義する。
-  // netdata/mcp-server は OAuth 認証を要求するため無効化する。
-
-  // 不要な MCP サーバーの無効化
-  // VS Code ユーザー設定で追加された MCP サーバーをワークスペースレベルで無効化する。
-  "servers": {
-    "netdata": {
-      "disabled": true
-    }
-  }
+	"servers": {
+		"serena": {
+			"command": "uvx",
+			"args": [
+				"serena-mcp",
+				"--project-root",
+				"${workspaceFolder}"
+			],
+			"env": {
+				"SERENA_DISABLE_SHELL": "true"
+			}
+		}
+	}
 }

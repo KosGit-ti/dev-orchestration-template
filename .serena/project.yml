@@ -1,0 +1,45 @@
+# Serena MCP プロジェクト設定
+# プロジェクトの言語・構成に合わせてカスタマイズしてください。
+
+project:
+  name: "my-project"
+  description: "プロジェクトの説明をここに記載"
+
+# 対象言語（プロジェクトに応じて追加・変更）
+# 対応言語: python, typescript, javascript, rust, go, java, c, cpp, csharp 等
+languages:
+  - python
+
+# インデックス対象（プロジェクト構成に合わせて変更）
+include:
+  - src/
+  - tests/
+  - ci/
+  - scripts/
+
+# インデックス除外
+exclude:
+  - .git/
+  - __pycache__/
+  - "*.pyc"
+  - .venv/
+  - node_modules/
+  - dist/
+  - build/
+  - "*.egg-info"
+  - .mypy_cache/
+  - .ruff_cache/
+  - .pytest_cache/
+
+# プロジェクトのコンテキスト情報
+memory:
+  architecture: |
+    プロジェクトのアーキテクチャ概要をここに記載します。
+    Serena がコード構造を理解するためのヒントとして使用されます。
+
+# セキュリティ設定
+security:
+  shell: disabled
+  write_paths:
+    - src/
+    - tests/
