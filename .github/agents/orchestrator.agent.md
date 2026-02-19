@@ -9,6 +9,7 @@ tools:
   - search
   - web/fetch
   - web/githubRepo
+  - mcp
 agents:
   - implementer
   - test-engineer
@@ -73,11 +74,31 @@ handoffs:
 
 5. **implementer** サブエージェントに実装を指示する
    - 指示には「対象モジュール」「受入条件」「参照すべき正本」を含める
-   - 実装が完了したら結果を受け取る
+   - **implementer は Serena MCP を使用してコード構造を把握してから実装する**（Shift-Left 原則）
+   - 実装が完了したら結果（Serena セマンティック分析結果を含む）を受け取る
 
 6. **test-engineer** サブエージェントにテスト作成を指示する
    - 指示には「テスト対象」「境界値テストの要否」「再現性テストの要否」を含める
    - テストが完了したら結果を受け取る
+
+### Step 3.5: セマンティック影響分析（条件付き）
+
+implementer の実装完了後、CI 実行前に変更の影響範囲を分析する。
+このステップは `src/` ファイルの変更がある場合のみ実行する。
+
+**実行条件**:
+- `src/` 配下のファイルが変更されている場合 → 実行する
+- テスト/ドキュメント/設定のみの変更 → スキップして Step 4 へ進む
+- Serena MCP が利用不可 → スキップして Step 4 へ進む
+
+**手順**:
+1. implementer の報告から Serena 分析結果を確認する
+2. implementer が Serena 分析を実施済みの場合 → 結果を監査用に保持し、Step 4 へ進む
+3. implementer が Serena 分析を未実施の場合 → 以下を自ら実行する:
+   a. `get_symbols_overview` で変更ファイルのシンボル構造を取得する
+   b. 変更されたシンボル（関数・クラス）に対して `find_referencing_symbols` を実行する
+   c. 影響分析レポートを作成する（対象シンボル、参照元一覧、破壊的変更の有無）
+4. 影響分析レポートを Step 5（監査委譲）で各監査エージェントに渡す
 
 ### Step 4: ローカル CI 実行
 
@@ -108,6 +129,8 @@ CI が通過しても IDE で型エラーが残ることがある。
    - **auditor-spec**: 仕様監査（requirements/policies/constraints との整合）
    - **auditor-security**: セキュリティ監査（P-001/P-002 違反の有無）
    - **auditor-reliability**: 信頼性監査（再現性/テスト品質/エラーハンドリング）
+   - **重要**: Step 3.5 のセマンティック影響分析レポートがある場合は、各監査エージェントに渡す。
+     これにより auditor-reliability の Serena Stage 3 の重複分析を回避する。
 10. 各監査結果を統合する
 
 ### Step 6: 修正ループ（Must 指摘がある場合）

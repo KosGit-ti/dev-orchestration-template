@@ -29,8 +29,13 @@
 2. フィーチャーブランチを作成する（`feat/<タスクID>-<説明>`）
 3. タスクを実装単位に分解する
 4. 各サブエージェントに指示を出す：
-   - **implementer**: 実装（即座に着手）
+   - **implementer**: 実装（即座に着手、**Serena MCP でコード構造を把握してから実装する — Shift-Left 原則**）
    - **test_engineer**: テスト作成（即座に着手）
+4.5. セマンティック影響分析（条件付き）
+   - `src/` ファイルの変更がある場合のみ実行する
+   - implementer が Serena 分析済み → 結果を監査用に保持して次へ
+   - implementer が Serena 未実施 → `get_symbols_overview` + `find_referencing_symbols` で影響分析
+   - テスト/docs/config のみの変更、または Serena MCP 利用不可 → スキップ
 5. ローカル CI を実行する（失敗時は修正指示→再実行、最大3回）
    - **重要**: 型チェックのスコープにはテストファイルも必ず含める
 5.5. 全体エラー検証（ゲートチェック）
@@ -40,6 +45,8 @@
    - **auditor_spec**: 仕様監査
    - **auditor_security**: セキュリティ監査
    - **auditor_reliability**: 信頼性監査
+   - **重要**: Step 4.5 のセマンティック影響分析レポートがある場合は、各監査エージェントに渡す。
+     これにより auditor_reliability の Serena Stage 3 の重複分析を回避する。
 7. Must 指摘がゼロになるまで修正ループ（最大3回）
 8. コミット・プッシュし、PR を作成する
    - PR 本文に `Closes #XX` を必ず記載する（対象 Issue は plan.md の対応表を参照）
