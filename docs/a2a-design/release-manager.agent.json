@@ -1,7 +1,7 @@
 {
   "name": "release-manager",
   "description": "リリース判定担当エージェント。全監査結果を統合し、受入条件（AC）をチェックして PR のマージ可否を判定する。コードは変更しない。Orchestrator からの handoff（一方向・制御移譲）で呼び出される。",
-  "url": "http://localhost:8086/.well-known/agent.json",
+  "url": "http://127.0.0.1:8086/.well-known/agent.json",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -39,10 +39,12 @@
     }
   ],
   "_meta": {
-    "userInvokable": true,
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
+    "userInvokable": false,
     "delegationRole": "terminal",
     "invokedBy": ["Orchestrator"],
     "delegationMode": "handoff",
-    "handoffNote": "Orchestrator から制御ごと引き渡される一方向委譲。判定結果は人間に直接報告する。"
+    "handoffNote": "Orchestrator から制御ごと引き渡される一方向委譲。判定結果は人間に直接報告する。",
+    "pushNotificationsNote": "release-manager のみ pushNotifications: true。handoff terminal として判定結果（Approve/Request Changes/Pending）を人間に即座にプッシュ通知する必要があるため。Orchestrator は pushNotifications: true だが、これは hub としてパイプライン全体の進捗を人間に通知するため。spoke エージェントは hub 経由で結果を返すため pushNotifications は不要。"
   }
 }

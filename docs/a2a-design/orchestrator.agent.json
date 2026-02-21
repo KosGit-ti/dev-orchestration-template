@@ -1,7 +1,7 @@
 {
   "name": "Orchestrator",
   "description": "プロジェクトの司令塔エージェント。docs/plan.md の Next タスクを分解し、サブエージェントに委譲して結果を統合する。自らコードは書かず、パイプライン全体の指揮・統合を担う。",
-  "url": "http://localhost:8080/.well-known/agent.json",
+  "url": "http://127.0.0.1:8080/.well-known/agent.json",
   "version": "1.0.0",
   "capabilities": {
     "streaming": true,
@@ -16,6 +16,7 @@
     "organization": "dev-orchestration-template"
   },
   "supportsAuthenticatedExtendedCard": true,
+  "_supportsAuthenticatedExtendedCardNote": "Orchestrator のみが true。hub エージェントとして認証済みクライアントに拡張カード（managedAgents/handoffTargets 等）を提供するため。spoke エージェントは hub 経由でのみ呼び出されるため不要。",
   "skills": [
     {
       "id": "pipeline-execution",
@@ -61,6 +62,7 @@
     }
   ],
   "_meta": {
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
     "userInvokable": true,
     "delegationRole": "hub",
     "managedAgents": [

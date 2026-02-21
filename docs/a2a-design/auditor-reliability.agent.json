@@ -1,7 +1,7 @@
 {
   "name": "auditor-reliability",
   "description": "信頼性監査担当エージェント。再現性（NFR-001）、テスト品質（NFR-020）、エラーハンドリング（P-010）の観点で独立監査する。Serena MCP を使用した条件付きセマンティック検証（第3層）を担う。コードは変更しない。",
-  "url": "http://localhost:8085/.well-known/agent.json",
+  "url": "http://127.0.0.1:8085/.well-known/agent.json",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -53,6 +53,7 @@
     }
   ],
   "_meta": {
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
     "userInvokable": false,
     "delegationRole": "spoke",
     "invokedBy": ["Orchestrator"],

@@ -101,12 +101,17 @@ Orchestrator → release-manager → (人間に直接報告)
 
 | # | 条件 | 判定基準 | 現状 |
 |---|---|---|---|
-| T-1 | A2A プロトコルの安定版リリース | v1.0 GA または主要クラウドプロバイダー※の本番採用 | v0.3（未達） |
+| T-1 | A2A プロトコルの安定版リリース | v1.0 GA または主要クラウドプロバイダー※の本番採用、または OSS 代替トリガー※※の達成 | v0.3（未達） |
 | T-2 | Python A2A SDK の成熟 | `a2a-python` SDK が安定版に到達 | 開発中（未達） |
 | T-3 | gRPC サポートの安定化 | v0.3 で追加された gRPC transport が本番利用可能 | 実験的（未達） |
 | T-4 | Agent Card 署名の標準化 | 署名検証ツールチェーンが整備 | 仕様策定中（未達） |
 
 > ※「主要クラウドプロバイダー」= AWS・Google Cloud・Azure のうち **2社以上** が A2A エージェントのマネージドサービスを本番提供していること。
+>
+> ※※ OSS 代替トリガー: プロジェクトが自律的に判断できる代替条件として、以下の **すべて** を満たす場合も T-1 を達成したものとみなす:
+> 1. A2A 互換の OSS 実装が Apache-2.0 など本プロジェクトで許容されたライセンスで公開されていること
+> 2. 当プロジェクトで PoC と負荷試験を実施し、要求される性能・信頼性・セキュリティ要件を満たすことを確認済みであること
+> 3. 当該 OSS 実装を前提とした運用手順と監視項目が `docs/runbook.md` に反映済みであること
 
 ### 2.2 プロジェクト的トリガー
 
@@ -183,7 +188,7 @@ flowchart TD
 | 2-5 | handoff パターンの A2A 化（`transfer` アクション） | 2-4 完了 |
 | 2-6 | ストリーミング対応（SSE → `tasks/sendSubscribe`） | 2-4 完了 |
 | 2-7 | 認証実装（Bearer トークン検証） | セキュリティ設計 |
-| 2-8 | Serena MCP 連携の A2A 経由化 | 2-4 完了, MCP 互換性確認 |
+| 2-8 | A2A エージェント環境での Serena MCP 連携動作確認 | 2-4 完了, MCP 互換性確認 |
 
 **切替戦略**: カナリアデプロイ方式。1エージェントずつ切り替え、問題がなければ次へ。
 
@@ -222,7 +227,7 @@ flowchart TD
 | R-2 | Copilot Extensions の突然の廃止 | 高 | 低 | Phase 1 を前倒しで準備し、デュアルスタック状態を確保する |
 | R-3 | A2A Python SDK の品質不足 | 中 | 中 | SDK に依存しない薄いラッパー層を設け、直接 HTTP 実装にフォールバック可能にする |
 | R-4 | Serena MCP と A2A の互換性問題 | 中 | 中 | MCP は A2A とは独立したプロトコル。Phase 2-8 で互換性を個別検証する |
-| R-5 | handoff パターンの A2A 未サポート | 中 | 低 | A2A v0.3 は `transfer` アクションを仕様に含む。未実装の場合は擬似 handoff（sub-agent + 制御フラグ）で代替する |
+| R-5 | handoff パターンの A2A 未サポート | 中 | 低 | A2A v0.3 における `transfer`（handoff 相当）アクションのサポート状況は公式ドキュメントおよび実装で要確認。未サポートまたは未実装の場合は擬似 handoff（sub-agent + 制御フラグ）で代替する |
 | R-6 | 認証・セキュリティの複雑化 | 中 | 中 | localhost 制約（P-001 相当）を維持。外部公開は ADR で別途判断する |
 | R-7 | 移行期間中の機能劣化 | 低 | 中 | デュアルスタック方式により、A2A 側に問題があれば即座に Copilot 側にフォールバック |
 
@@ -263,7 +268,7 @@ Phase 1〜3 の各ステップで問題が発生した場合のロールバッ�
 | `auditor-spec.agent.json` | auditor-spec | ❌ | sub-agent (spoke) |
 | `auditor-security.agent.json` | auditor-security | ❌ | sub-agent (spoke) |
 | `auditor-reliability.agent.json` | auditor-reliability | ❌ | sub-agent (spoke) |
-| `release-manager.agent.json` | release-manager | ✅ | handoff (terminal) |
+| `release-manager.agent.json` | release-manager | ❌ | handoff (terminal) |
 
 ## 付録 B: 用語集
 

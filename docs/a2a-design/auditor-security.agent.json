@@ -1,7 +1,7 @@
 {
   "name": "auditor-security",
   "description": "セキュリティ監査担当エージェント。禁止操作（P-001）、秘密情報禁止（P-002）、依存関係（P-040）の観点で独立監査する。コードは変更しない。最も制限されたツールセットを持つ。",
-  "url": "http://localhost:8084/.well-known/agent.json",
+  "url": "http://127.0.0.1:8084/.well-known/agent.json",
   "version": "1.0.0",
   "capabilities": {
     "streaming": false,
@@ -46,6 +46,7 @@
     }
   ],
   "_meta": {
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
     "userInvokable": false,
     "delegationRole": "spoke",
     "invokedBy": ["Orchestrator"],
