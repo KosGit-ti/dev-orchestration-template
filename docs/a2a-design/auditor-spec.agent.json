@@ -1,0 +1,54 @@
+{
+  "name": "auditor-spec",
+  "description": "仕様監査担当エージェント。変更が requirements/policies/constraints/plan に整合しているかを独立監査する。コードは変更しない。",
+  "url": "http://localhost:8083/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "requirements-audit",
+      "name": "要件整合性監査",
+      "description": "変更が requirements.md の要件・受入条件（AC）に整合しているかを検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "policy-compliance-audit",
+      "name": "ポリシー準拠監査",
+      "description": "変更が policies.md のポリシー（P-001〜P-050）に準拠しているかを検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "constraint-audit",
+      "name": "制約整合性監査",
+      "description": "制約に影響する変更がある場合、constraints.md との整合性を検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "docs-consistency-audit",
+      "name": "正本更新監査",
+      "description": "正本 docs の更新が必要な変更に対して、docs が適切に更新されているか（AC-030）を検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "userInvokable": false,
+    "delegationRole": "spoke",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "sub-agent"
+  }
+}

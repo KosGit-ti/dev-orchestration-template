@@ -1,0 +1,54 @@
+{
+  "name": "test-engineer",
+  "description": "テスト担当エージェント。実装に対するテスト（単体/境界値/統合/再現性）を作成・実行し、品質を担保する。テストにはダミーデータのみ使用する。",
+  "url": "http://localhost:8082/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "unit-test-creation",
+      "name": "単体テスト作成",
+      "description": "各モジュールの関数・クラスに対する単体テストを作成・実行する。決定的（deterministic）なテストを書き、テストの独立性を保つ。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "boundary-test-creation",
+      "name": "境界値テスト作成",
+      "description": "制約のしきい値に対する境界値テストをパラメータ化して作成する。constraints.md のしきい値定義を参照する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "integration-test-creation",
+      "name": "統合テスト作成",
+      "description": "パイプライン全体やモジュール間連携の統合テストを作成・実行する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "reproducibility-test-creation",
+      "name": "再現性テスト作成",
+      "description": "同一入力に対して同一出力を返すことを検証する再現性テストを作成する。シード設定・決定的実行・グローバル状態排除を確認する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "userInvokable": false,
+    "delegationRole": "spoke",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "sub-agent"
+  }
+}

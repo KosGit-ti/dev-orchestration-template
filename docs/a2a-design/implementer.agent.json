@@ -1,0 +1,54 @@
+{
+  "name": "implementer",
+  "description": "コード実装担当エージェント。Orchestrator からの指示に基づき、ソースコードと docs の更新を行う。Serena MCP を活用した Shift-Left セマンティック分析を実施し、結果を Orchestrator に返却する。",
+  "url": "http://localhost:8081/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "code-implementation",
+      "name": "コード実装",
+      "description": "対象モジュール・受入条件・参照正本の指示を受け、ソースコードを実装する。アーキテクチャの依存ルール、P-001（禁止操作）、P-002（秘密情報禁止）を厳守する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "docs-update",
+      "name": "ドキュメント更新",
+      "description": "実装に伴う docs/ 配下のドキュメント更新（architecture.md、requirements.md 等の正本更新）を行う。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "serena-semantic-analysis",
+      "name": "Serena セマンティック分析",
+      "description": "実装の前・中・後で Serena MCP を活用し、get_symbols_overview でシンボル構造を把握、find_referencing_symbols で参照元を追跡する。分析結果を Orchestrator に返却し、監査フェーズの重複分析を回避する（Shift-Left 原則）。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "review-fix",
+      "name": "レビュー指摘修正",
+      "description": "監査エージェントまたは Copilot コードレビューの指摘に基づき、対象ファイル・行番号の修正を実施する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "userInvokable": false,
+    "delegationRole": "spoke",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "sub-agent"
+  }
+}

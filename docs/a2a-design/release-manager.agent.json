@@ -1,0 +1,48 @@
+{
+  "name": "release-manager",
+  "description": "リリース判定担当エージェント。全監査結果を統合し、受入条件（AC）をチェックして PR のマージ可否を判定する。コードは変更しない。Orchestrator からの handoff（一方向・制御移譲）で呼び出される。",
+  "url": "http://localhost:8086/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": true
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "audit-integration",
+      "name": "監査結果統合",
+      "description": "auditor-spec / auditor-security / auditor-reliability の3つの監査結果を統合し、Must 指摘の残数を集計する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "acceptance-criteria-check",
+      "name": "受入条件チェック",
+      "description": "requirements.md の受入条件（AC-001〜AC-050）を個別にチェックし、すべてが満たされているかを判定する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "merge-decision",
+      "name": "マージ可否判定",
+      "description": "承認（Approve）/ 修正要求（Request Changes）/ 保留（Pending）のいずれかを判定する。人間の最終承認なしにマージを実行しない。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "userInvokable": true,
+    "delegationRole": "terminal",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "handoff",
+    "handoffNote": "Orchestrator から制御ごと引き渡される一方向委譲。判定結果は人間に直接報告する。"
+  }
+}

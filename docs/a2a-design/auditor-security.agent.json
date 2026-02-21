@@ -1,0 +1,56 @@
+{
+  "name": "auditor-security",
+  "description": "セキュリティ監査担当エージェント。禁止操作（P-001）、秘密情報禁止（P-002）、依存関係（P-040）の観点で独立監査する。コードは変更しない。最も制限されたツールセットを持つ。",
+  "url": "http://localhost:8084/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "prohibited-operation-audit",
+      "name": "禁止操作監査",
+      "description": "P-001 に定義された禁止パターン（禁止 import、危険な関数等）に該当するコードがないかを検査する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "secret-detection-audit",
+      "name": "秘密情報検出監査",
+      "description": "P-002 に基づき、ハードコードされた API キー・トークン・認証情報・個人情報がコードに含まれていないかを検査する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "dependency-audit",
+      "name": "依存関係監査",
+      "description": "P-040 に基づき、新規依存のライセンス（許可/禁止リスト）、既知の脆弱性、必要性を検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "code-safety-audit",
+      "name": "コード安全性監査",
+      "description": "subprocess の安全な使用、パストラバーサル防止、入力値検証の適切性を検査する。policy_check.py と重複する検査も目視で再確認する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "userInvokable": false,
+    "delegationRole": "spoke",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "sub-agent",
+    "restrictedTools": true,
+    "toolsNote": "editFiles / runInTerminal 不可（読み取り専用）"
+  }
+}
