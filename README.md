@@ -209,7 +209,7 @@ FORBIDDEN_PATTERNS = [
 
 AI モデルと外部ツール・データソース間の通信に使用するオープン標準プロトコル。
 各エージェントがデータベース、ファイルシステム、外部 API 等のリソースにアクセスする際のインターフェースを標準化する。
-詳細: [docs/observability-guide.md](docs/observability-guide.md)
+詳細: [docs/a2a-design/README.md（§4 MCP vs A2A の使い分けガイド）](docs/a2a-design/README.md#4-mcp-vs-a2a-の使い分けガイド)
 
 ### A2A（Agent2Agent Protocol）
 

@@ -32,13 +32,14 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 # ---------------------------------------------------------------------------
-# TODO: プロジェクト名に合わせて変更すること
-# {{PROJECT_NAME}} は project-config.yml の project.name に対応する。
-# {{TRACER_NAME}} はトレーサー識別子。通常は "パッケージ名.observability" 形式。
+# デフォルトのサービス名・トレーサー名
+# 最上位パッケージ名をサービス名とし、「<package>.observability」を
+# トレーサー識別子として利用する。必要に応じて init_tracer(service_name=...)
+# でサービス名を上書きすること。
 # ---------------------------------------------------------------------------
 
-SERVICE_NAME = "{{PROJECT_NAME}}"
-_TRACER_NAME = "{{TRACER_NAME}}"
+SERVICE_NAME = __name__.split(".")[0]
+_TRACER_NAME = f"{SERVICE_NAME}.observability"
 
 # ---------------------------------------------------------------------------
 # OTel SDK のオプショナルインポート

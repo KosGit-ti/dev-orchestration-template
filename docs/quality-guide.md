@@ -180,9 +180,10 @@ uv run pytest tests/test_sample_properties.py -q
 
 ## 5. PyVeritas に関する注記
 
-[PyVeritas](https://arxiv.org/abs/2508.08171)（arXiv:2508.08171、2025年8月発表）は、
-LLM を用いて Python コードを C にトランスパイルし、CBMC による有界モデル検査を適用する
+PyVeritas は、LLM を用いて Python コードを C にトランスパイルし、CBMC による有界モデル検査を適用する
 形式検証フレームワークである。
+
+> **参照情報**: 論文の正確な arXiv ID ・ URL は [arXiv](https://arxiv.org/) で「PyVeritas formal verification」を検索して確認すること。
 
 ### 現時点での制限事項
 

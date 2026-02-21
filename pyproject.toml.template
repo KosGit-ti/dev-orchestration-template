@@ -39,9 +39,17 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# {{PACKAGE_NAME}}: project-config.yml の source.package_name に対応
-# 注意: {{PACKAGE_NAME}} が "sample" の場合、src/sample と重複するため調整すること
-packages = ["src/{{PACKAGE_NAME}}", "src/observability", "src/sample"]
+# src 配下のパッケージをすべて含める。
+# プロジェクトで不要なパッケージ（src/sample 等）は削除すること。
+packages = ["src"]
+
+# =============================================================================
+# 運用方針:
+# このファイルは pyproject.toml の参照テンプレートである。
+# 現時点で bootstrap.sh はこのファイルを自動変換しない。
+# プロジェクト初期化後、このテンプレートを参考に pyproject.toml を
+# 手動で編集すること。bootstrap.sh との統合は将来の改善課題。
+# =============================================================================
 
 # =============================================================================
 # 開発ツール設定

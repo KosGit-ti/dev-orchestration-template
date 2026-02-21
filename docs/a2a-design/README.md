@@ -20,11 +20,13 @@
 
 ### A2A（Agent2Agent Protocol）とは
 
-Google が主導し 2025 年 4 月に発表、同年 6 月に Linux Foundation 傘下でオープンソース化されたエージェント間通信プロトコル。最新安定版は **v0.3**（2025 年 7 月 31 日リリース、gRPC サポート・署名付き Agent Card 追加）。
+Google が主導し 2025 年 4 月に発表、同年 6 月に Linux Foundation 債下でオープンソース化されたエージェント間通信プロトコル。
+
+> **バージョン情報**: 最新の安定版・リリース日は [A2A 公式リポジトリ](https://github.com/google/A2A) で確認すること。
 
 通信基盤に **HTTP、SSE（Server-Sent Events）、JSON-RPC、gRPC** を使用する。
 
-> **注意**: IBM BeeAI の ACP（Agent Communication Protocol）は 2025 年 9 月 1 日に A2A へ統合済みであり、A2A と ACP は現在は同一プロトコルを指す。「A2A または ACP」という記述は誤りであるため使用しないこと。
+> **注意**: IBM BeeAI の ACP（Agent Communication Protocol）は A2A へ統合済みであり、A2A と ACP は現在は同一プロトコルを指す。「A2A または ACP」という記述は誤りであるため使用しないこと。
 
 ### Agent Card とは
 
