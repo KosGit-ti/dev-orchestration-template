@@ -1,0 +1,79 @@
+{
+  "name": "Orchestrator",
+  "description": "プロジェクトの司令塔エージェント。docs/plan.md の Next タスクを分解し、サブエージェントに委譲して結果を統合する。自らコードは書かず、パイプライン全体の指揮・統合を担う。",
+  "url": "http://127.0.0.1:8080/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "supportsAuthenticatedExtendedCard": true,
+  "_supportsAuthenticatedExtendedCardNote": "Orchestrator のみが true。hub エージェントとして認証済みクライアントに拡張カード（managedAgents/handoffTargets 等）を提供するため。spoke エージェントは hub 経由でのみ呼び出されるため不要。",
+  "skills": [
+    {
+      "id": "pipeline-execution",
+      "name": "自動実行パイプライン",
+      "description": "plan.md の Next タスクを選択し、ブランチ作成→実装委譲→テスト委譲→CI実行→監査委譲→コミット・PR作成→レビュー対応→リリース判定のパイプラインを自律的に実行する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "task-decomposition",
+      "name": "タスク分解・委譲",
+      "description": "タスクを実装単位に分解し、implementer・test-engineer・auditor 群にサブタスクを委譲して結果を統合する。ハブ&スポーク型アーキテクチャの中心ノードとして機能する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "serena-analysis-orchestration",
+      "name": "Serena セマンティック影響分析オーケストレーション",
+      "description": "implementer から返却された Serena セマンティック分析結果を受け取り、Step 3.5 で影響分析レポートを作成する。implementer が未実施の場合は自ら get_symbols_overview / find_referencing_symbols を実行してフォールバック分析を行う。作成したレポートを監査エージェント群に共有し、重複分析を回避する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "ci-execution",
+      "name": "CI 実行・エラー検証",
+      "description": "ローカル CI（リンター・フォーマッター・型チェック・テスト）を実行し、get_errors によるワークスペース全体のエラー検証を行う。失敗時は implementer に修正を委譲する修正ループを管理する（最大3回）。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "pr-management",
+      "name": "PR 作成・レビュー対応",
+      "description": "Git 操作（ブランチ作成・コミット・プッシュ）と PR 作成を実行する。Copilot コードレビューの指摘を取得・分類し、修正→再プッシュ→再レビューのループを管理する（最大3回、Bounded Recursion）。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "plan-revision",
+      "name": "計画修正",
+      "description": "plan.md の更新、GitHub Issues の作成・管理、GitHub Project へのアイテム追加・フィールド設定を行う。Backlog/Next の調整と変更履歴の記録を含む。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
+    "userInvokable": true,
+    "delegationRole": "hub",
+    "managedAgents": [
+      "implementer",
+      "test-engineer",
+      "auditor-spec",
+      "auditor-security",
+      "auditor-reliability"
+    ],
+    "handoffTargets": [
+      "release-manager"
+    ]
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "auditor-reliability",
+  "description": "信頼性監査担当エージェント。再現性（NFR-001）、テスト品質（NFR-020）、エラーハンドリング（P-010）の観点で独立監査する。Serena MCP を使用した条件付きセマンティック検証（第3層）を担う。コードは変更しない。",
+  "url": "http://127.0.0.1:8085/.well-known/agent.json",
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "authentication": {
+    "schemes": ["bearer"]
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "provider": {
+    "organization": "dev-orchestration-template"
+  },
+  "skills": [
+    {
+      "id": "static-analysis-verification",
+      "name": "静的解析エラー検証",
+      "description": "Stage 1（ワークスペース全体スキャン）と Stage 2（変更ファイル個別スキャン）による静的解析エラーの検証。最優先で実行し、エラーが残っている状態では監査を通過させない。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "serena-semantic-verification",
+      "name": "Serena セマンティック検証",
+      "description": "Stage 3: 条件付きセマンティック検証。implementer/orchestrator が分析済みの場合はスポットチェック（検証モード）、未分析の場合はフル分析モードを実行する。find_symbol / find_referencing_symbols / get_symbols_overview を使用する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "reproducibility-audit",
+      "name": "再現性監査",
+      "description": "NFR-001 に基づき、シード設定、決定的実行、グローバル状態の排除が適切に行われているかを検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "test-quality-audit",
+      "name": "テスト品質監査",
+      "description": "NFR-020 に基づき、テストの存在だけでなく品質を評価する。カバレッジ、境界値テスト、エッジケースの網羅性を検査する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    },
+    {
+      "id": "error-handling-audit",
+      "name": "エラーハンドリング監査",
+      "description": "P-010 に基づき、フェイルクローズの原則が守られているか、例外処理が適切か、意思決定根拠がログに記録されているかを検証する。",
+      "inputModes": ["text"],
+      "outputModes": ["text"]
+    }
+  ],
+  "_meta": {
+    "_note": "この _meta セクションは A2A v0.3 の標準仕様ではなく、本プロジェクト固有の拡張フィールドです。標準準拠の A2A クライアントはこのフィールドを無視してかまいません。",
+    "userInvokable": false,
+    "delegationRole": "spoke",
+    "invokedBy": ["Orchestrator"],
+    "delegationMode": "sub-agent"
+  }
+}
