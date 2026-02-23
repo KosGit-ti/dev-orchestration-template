@@ -256,7 +256,7 @@ info "CI ワークフローを設定中..."
 CI_FILE="$REPO_ROOT/.github/workflows/ci.yml"
 
 if [ -f "$CI_FILE" ] && [ "$LANGUAGE" = "python" ]; then
-    # Python 用の CI ワークフローを生成
+    # Python 用の CI ワークフローを生成（Action はコミットハッシュで固定）
     cat > "$CI_FILE" << 'CIFILE'
 name: CI
 
@@ -265,15 +265,19 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   quality-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5 # TODO: コミットハッシュに置換すること
         with:
           python-version: "PYTHON_VERSION"
 
@@ -281,7 +285,7 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install uv
 
       - name: Cache uv dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v4 # TODO: コミットハッシュに置換すること
         with:
           path: ~/.cache/uv
           key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
@@ -309,6 +313,37 @@ CIFILE
     sed -i.bak "s|PYTHON_VERSION|$VERSION|g" "$CI_FILE"
     rm -f "$CI_FILE.bak"
     ok "Python 用 CI ワークフローを生成しました"
+
+    # staging.yml / production.yml の品質チェックステップも有効化
+    for WF_FILE in "$REPO_ROOT/.github/workflows/staging.yml" "$REPO_ROOT/.github/workflows/production.yml"; do
+        if [ -f "$WF_FILE" ]; then
+            # Python 用セットアップのコメント解除
+            sed -i.bak \
+                -e '/# --- Python ---/,/# --- Node\.js ---/{
+                    s|^      # - uses: actions/setup-python|      - uses: actions/setup-python|
+                    s|^      #   with:|        with:|
+                    s|^      #     python-version:.*|          python-version: "'"$VERSION"'"|
+                    s|^      # - name: Install uv|      - name: Install uv|
+                    s|^      #   run: python -m pip install --upgrade pip && python -m pip install uv|        run: python -m pip install --upgrade pip \&\& python -m pip install uv|
+                    s|^      # - name: Sync dependencies|      - name: Sync dependencies|
+                    s|^      #   run: uv sync --all-extras --dev|        run: uv sync --all-extras --dev|
+                }' \
+                "$WF_FILE"
+            # 品質チェックステップのコメント解除
+            sed -i.bak \
+                -e 's|^      # - name: Lint|      - name: Lint|' \
+                -e 's|^      #   run: {{RUN_PREFIX}} {{LINTER}}|        run: uv run ruff check .|' \
+                -e 's|^      # - name: Format check|      - name: Format check|' \
+                -e 's|^      #   run: {{RUN_PREFIX}} {{FORMATTER}}|        run: uv run ruff format --check .|' \
+                -e 's|^      # - name: Type check|      - name: Type check|' \
+                -e 's|^      #   run: {{RUN_PREFIX}} {{TYPE_CHECKER}}|        run: uv run mypy src/|' \
+                -e 's|^      # - name: Test$|      - name: Test|' \
+                -e 's|^      #   run: {{RUN_PREFIX}} {{TEST_RUNNER}}|        run: uv run pytest -q --tb=short|' \
+                "$WF_FILE"
+            rm -f "$WF_FILE.bak"
+            ok "$(basename "$WF_FILE") の品質チェックを有効化しました"
+        fi
+    done
 fi
 
 # ---------------------------------------------------------------------------
