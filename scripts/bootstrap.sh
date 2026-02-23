@@ -267,7 +267,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
 
 jobs:
   quality-gate:
@@ -320,7 +319,8 @@ CIFILE
             # Python 用セットアップのコメント解除
             sed -i.bak \
                 -e '/# --- Python ---/,/# --- Node\.js ---/{
-                    s|^      # - uses: actions/setup-python|      - uses: actions/setup-python|
+                    s|^      # - uses: actions/setup-python@.*|      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5|
+                    s|^      # - uses: actions/setup-python|      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5|
                     s|^      #   with:|        with:|
                     s|^      #     python-version:.*|          python-version: "'"$VERSION"'"|
                     s|^      # - name: Install uv|      - name: Install uv|
