@@ -277,7 +277,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5 # TODO: コミットハッシュに置換すること
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "PYTHON_VERSION"
 
@@ -285,7 +285,7 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install uv
 
       - name: Cache uv dependencies
-        uses: actions/cache@v4 # TODO: コミットハッシュに置換すること
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/uv
           key: uv-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}

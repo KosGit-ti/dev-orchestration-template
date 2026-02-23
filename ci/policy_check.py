@@ -68,7 +68,7 @@ SECRET_PATTERNS: list[str] = [
     r"sk-[A-Za-z0-9]{32,}",  # 汎用 API キー
     r"sk-ant-api03-[A-Za-z0-9\-_]{20,}",  # Anthropic API キー新形式
     r"sk-proj-[A-Za-z0-9]{20,}",  # OpenAI API キー新形式
-    r"Bearer\s+[A-Za-z0-9\-._~+/]+=*",  # Bearer トークン
+    r"Bearer\s+[A-Za-z0-9\-._~+/]{20,}=*",  # Bearer トークン（最小20文字で誤検知低減）
     r"password\s*=\s*[\"'][^\"\']+[\"']",  # パスワードハードコード
 ]
 
