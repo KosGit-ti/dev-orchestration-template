@@ -1,421 +1,748 @@
-# リポジトリ総合レビューレポート
+# 改善作業計画: dev-orchestration-template
 
-> レビュー日: 2026-02-22
-> レビュー基準: 2025-2026年時点のAIエージェント・DevOpsベストプラクティス
-> 対象リポジトリ: `dev-orchestration-template`
-
----
-
-## 総合評価サマリ
-
-| 観点 | 現状評価 | 目標 | コメント |
-|---|---|---|---|
-| アーキテクチャ設計 | ★★★★☆ | ★★★★★ | 関心の分離・SSOT・HITL が明確。単一障害点あり |
-| AIエージェント設計 | ★★★★☆ | ★★★★★ | ASI準拠・Bounded Recursion が優秀。コスト最適化余地あり |
-| セキュリティ | ★★★☆☆ | ★★★★★ | ASI01-07は良好。policy_checkのスコープ漏れ・CIが未実働 |
-| CI/CD品質 | ★★☆☆☆ | ★★★★★ | テンプレートのままで品質ゲートがほぼ未機能 |
-| コード・テスト設計 | ★★★★☆ | ★★★★★ | DbC + Hypothesis は現代的。実装は薄い |
-| ドキュメント管理 | ★★★★☆ | ★★★★★ | SSOT構造は秀逸。要件定義がプレースホルダー多数 |
-| 運用・可観測性 | ★★☆☆☆ | ★★★★★ | OTelの骨格はあるが未接続。監査証跡が最小限 |
-| 最新技術動向整合性 | ★★★★☆ | ★★★★★ | MCP/Agent/DbC/Property-test は最前線。オーケストレーション実装は課題 |
+> 作成日: 2026-02-23
+> 要件定義書: `docs/improvement-requirements-dev-orchestration-template-001.md`
+> 実行環境: GitHub Copilot Pro+ Chat（Claude Opus 4.6）
+> コンテキストウィンドウ: 128K tokens
 
 ---
 
-## 1. アーキテクチャ・設計哲学
+## 1. 概要
 
-### 優れている点
+本計画は `improvement-requirements-dev-orchestration-template-001.md` に記載された25項目の改善要件を、
+GitHub Copilot Pro+ の Chat（Claude Opus 4.6）で段階的に実行するための手順書である。
 
-**7エージェント分離の設計思想が一貫している。**
+### 前提条件
 
-- `orchestrator` が「自らコードを書かない」という制約を明文化しているのは、責任分離の観点で正しい。この原則は LLM のモード混在（計画と実装を同一エージェントが担う際の発散）を防ぐ。
-- 監査エージェント3種（spec/security/reliability）が実装エージェントと完全独立しており、監査の客観性が担保されている。
-- `release-manager` への **handoff**（制御移譲）と sub-agent 委譲（制御返却）を明確に区別している設計は、エージェントアーキテクチャの成熟した理解を示している。
-- **Human-in-the-Loop** が最終マージ前に設計上強制されており、自律エージェントの暴走を防ぐ安全弁として機能する。
+- 各セッションは独立した Copilot Chat で実行する（文脈継続が必要な場合は明記）
+- 本リポジトリの `.github/copilot-instructions.md` がシステムプロンプトに自動付与される
+- 各セッションの作業指示はそのままコピペで使用可能な形式で記載する
+- 変更後は各セッション内で品質管理手順（CI実行・エラー検証）を行う
+- `docs/plan.md` の Next/Backlog への反映は別途行う
 
-### 課題
+### 推奨実行順序
 
-#### ① スター型トポロジーによる単一障害点
+1. **本リポジトリ（dev-orchestration-template）を先に改善する**（テンプレートとしての品質確立）
+2. その後 `stock-trading-system` に改善を適用する（テンプレート変更を参考にできる）
+
+---
+
+## 2. トークン予算モデル
+
+### 128K コンテキストウィンドウの内訳
 
 ```
-Orchestrator → [Impl, Test, AuditSpec, AuditSec, AuditRel] → RM
+┌─────────────────────────────────────────────────────┐
+│ 128K tokens (Claude Opus 4.6 on Copilot Pro+)       │
+├─────────────────────────────────────────────────────┤
+│ システムプロンプト（Copilot 基盤）    :  ~8,000 tok │
+│ copilot-instructions.md               :  ~4,000 tok │
+│ instructions/*.md（適用対象分）       :  ~2,500 tok │
+│ ─────────────────────────────────────────────────── │
+│ システムオーバーヘッド合計            : ~15,000 tok │
+│                                                     │
+│ 実作業予算                            :~113,000 tok │
+│   ├─ ファイル読み込み                 : ~30-50K tok │
+│   ├─ 会話履歴（蓄積・圧縮）          : ~20-40K tok │
+│   ├─ ツール呼び出しオーバーヘッド     : ~10-20K tok │
+│   └─ 出力生成                         : ~10-20K tok │
+└─────────────────────────────────────────────────────┘
 ```
 
-Orchestratorがすべての協調を担う設計はシンプルだが、Orchestratorの誤判断がパイプライン全体に伝播する。CNCF が推奨する **Choreography パターン**（各エージェントがイベントを購読して自律判断）と組み合わせることで、特定ステップの局所的な耐障害性を高められる。
+### ターン数とコンテキスト圧縮の関係
 
-#### ② ロールバック戦略の欠如
+| ターン数 | 実効利用可能トークン | リスク                 | 推奨               |
+| -------- | -------------------- | ---------------------- | ------------------ |
+| 1-5      | ~90,000              | なし                   | 最適               |
+| 6-10     | ~70,000              | 軽微な圧縮             | 良好               |
+| 11-15    | ~50,000              | 初期読み込み情報が圧縮 | 注意               |
+| 16-20    | ~30,000              | 文脈喪失リスク         | 危険               |
+| 20+      | ~20,000              | 重要情報の喪失         | 新規セッション推奨 |
 
-停止条件（P-001違反、3回ループ超過）は定義されているが、**ロールバック手順が未定義**。特に `feat/<id>` ブランチへのコミット後にポリシー違反が発覚した場合の復旧フローが runbook に記述されていない。
+### セッション設計原則
 
-#### ③ 実装→テストが潜在的に逐次実行
-
-Step 3 で `implementer` → `test-engineer` の順で委譲が記述されている。TDD観点では、テスト設計を実装前に並行実施することが理想的。現状のフローは、test-engineerがimplementerの完成コードに対してテストを後付けするパターンになりやすい。
+- 1セッションあたり **10-15ターン以内** に完了させる
+- ファイル読み込みは **合計40K tokens 以内** を目安とする
+- 文脈継続が不要なタイミングで **新規チャットセッションを開始** する
+- 修正→CI失敗→再修正ループは **最大3回** で打ち切り、次セッションに持ち越す
 
 ---
 
-## 2. AIエージェントパイプライン設計
+## 3. セッション一覧
 
-### 優れている点
+| Session | Phase | 対象項目                     | 推定トークン消費 | 推定ターン数 | 文脈切れ許容 |
+| ------- | ----- | ---------------------------- | ---------------- | ------------ | ------------ |
+| 1       | P0    | #1, #2, #3, #4               | ~50K             | 8-12         | ✅ 後に可    |
+| 2       | P1    | #5, #6, #10                  | ~55K             | 10-15        | ✅ 後に可    |
+| 3       | P1    | #7, #8, #9                   | ~55K             | 10-15        | ✅ 後に可    |
+| 4       | P2    | #11, #12, #13                | ~60K             | 12-18        | ✅ 後に可    |
+| 5       | P2    | #14, #15, #17                | ~50K             | 8-12         | ✅ 後に可    |
+| 6       | P2    | #16, #18, #19                | ~45K             | 8-10         | ✅ 後に可    |
+| 7       | P2    | #20, #21, #22, #23, #24, #25 | ~55K             | 10-15        | ✅ 完了      |
 
-**Bounded Recursion（最大3回）** の設計は、AIエージェント特有の「振動問題」（修正と新規バグの反復）を実用的な上限で制御している。学術的には termination guarantee の提供であり、実システムでの採用として妥当。
+> **全セッション間で文脈切れ許容**：各セッションは独立設計されており、任意のタイミングで新規チャットを開始可能。
 
-**Serena MCP の3層統合（Shift-Left）** は最新のMCPエコシステムへの実践的な適応であり、セマンティック解析をCIより手前に置く思想は、2024年以降の "Agent-native development" トレンドに合致する。
+---
 
-**ASI01-07 への準拠**（プロンプトインジェクション防御・最小特権・HITL・外部入力サニタイズ）は、現時点でのAIエージェントセキュリティのベストプラクティスである OWASP LLM Top 10 (2025) への対応として評価できる。
+## 4. 各セッション詳細
 
-### 課題
+---
 
-#### ① コスト最適化の欠如（全エージェントがClaude Opus 4.6）
+### Session 1: P0 セキュリティ基盤の強化（要件 #1, #2, #3, #4）
 
-`docs/orchestration.md §7.2` に自ら「Claude Sonnet 4.6はエージェントタスク最強、コスト1x」「Opus 4.6はプレミアム3x」と記載しているにもかかわらず、全エージェントがデフォルトOpus 4.6。これは設計と実装の矛盾。
+#### 目的
 
-推奨モデル割当例:
+本番ワークフローの Action ピン留め、CI 品質チェックの復活、`policy_check.py` のスキャン範囲拡張とシークレット検出パターンの最新化。
 
+#### 読み込みファイル一覧
+
+| ファイル                                                          | 推定トークン | 用途                    |
+| ----------------------------------------------------------------- | ------------ | ----------------------- |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` | ~10,000      | 要件全体の把握          |
+| `ci/policy_check.py`                                              | ~1,600       | #3, #4 の修正対象       |
+| `.github/workflows/production.yml`                                | ~800         | #1 の修正対象           |
+| `.github/workflows/ci.yml`                                        | ~800         | #2 の修正対象           |
+| `.github/workflows/staging.yml`                                   | ~900         | #1 参考                 |
+| `scripts/bootstrap.sh`                                            | ~2,300       | #2 自動有効化の実装場所 |
+| `pyproject.toml.template`                                         | ~600         | CI ツール設定確認       |
+| **合計**                                                          | **~17,000**  |                         |
+
+#### 推定総トークン消費
+
+- システムオーバーヘッド: ~15,000
+- ファイル読み込み: ~17,000
+- 会話・出力: ~18,000
+- **合計: ~50,000 / 128,000**（余裕あり）
+
+#### コンテキスト切れ許容タイミング
+
+- **セッション開始前**: OK（独立セッション）
+- **セッション完了後**: OK（次セッション着手可能）
+- **セッション途中**: #1+#2 完了後に切れても可（#3+#4 は独立して実行可能）
+
+#### 作業指示文（コピペ用）
+
+```
+以下の4つの改善を順番に実施してください。
+
+## 作業1: production.yml の Action ピン留め（要件 #1）
+`.github/workflows/production.yml` で `actions/checkout@v4` のようにタグ指定されている
+Action を、コミットハッシュ指定に変更してください。
+参考: `.github/workflows/ci.yml` や `staging.yml` で使用されているハッシュを確認し、
+同一のハッシュを使用してください。
+
+## 作業2: CI 品質チェックの復活（要件 #2）
+`.github/workflows/ci.yml` のコメントアウトされている品質チェックステップ（Lint, Format check,
+Type check, Test）を有効化してください。
+`pyproject.toml.template` にツール設定があるため、`pyproject.toml` が存在する前提で動作するよう
+条件分岐（`if: hashFiles('pyproject.toml') != ''`）を追加するか、
+`scripts/bootstrap.sh` の最後に CI ステップをアンコメントする処理を追加してください。
+`bootstrap.sh` に自動化する方法を推奨します。
+
+## 作業3: policy_check.py の SCAN_DIRS 拡張（要件 #3）
+`ci/policy_check.py` の `SCAN_DIRS` に以下のディレクトリを追加してください:
+- `.github/`（エージェント定義・instructions・workflows）
+- `configs/`（設定ファイル）
+- `ci/`（CI スクリプト自身）
+- `docs/`（ドキュメント）
+
+## 作業4: シークレット検出パターンの最新化（要件 #4）
+`ci/policy_check.py` の `SECRET_PATTERNS` に以下のパターンを追加してください:
+- `sk-ant-api03-` パターン（Anthropic API キー新形式）
+- `sk-proj-` パターン（OpenAI API キー新形式）
+- `Bearer [A-Za-z0-9\-._~+/]+=*` パターン
+- `password\s*=\s*["'][^"']+["']` パターン
+既存の `sk-[A-Za-z0-9]{32,}` パターンはそのまま残してください。
+
+## 完了後
+全変更完了後に以下を実行してください:
+1. `python ci/policy_check.py` で誤検知がないことを確認
+2. get_errors ツールで全体エラーゼロを確認
+3. 変更内容のセルフレビュー（P-001〜P-003 違反なし）
+```
+
+#### 期待される成果物
+
+- `production.yml`: Action がコミットハッシュで固定
+- `ci.yml` または `bootstrap.sh`: 品質チェックの有効化機構
+- `ci/policy_check.py`: SCAN_DIRS 拡張 + SECRET_PATTERNS 最新化
+
+#### 完了確認
+
+- [ ] `python ci/policy_check.py` がエラーなしで完了
+- [ ] production.yml に `@v4` 等のタグ指定が残っていない
+- [ ] `.github/` がスキャン対象に含まれている
+- [ ] `sk-ant-api03-` テスト文字列が検出される
+
+---
+
+### Session 2: P1 CI/セキュリティ強化（要件 #5, #6, #10）
+
+#### 目的
+
+依存関係脆弱性スキャン（pip-audit / gitleaks）の CI 統合、SBOM 生成、concurrency/キャッシュ設定の追加。
+
+#### 読み込みファイル一覧
+
+| ファイル                                                                 | 推定トークン | 用途                   |
+| ------------------------------------------------------------------------ | ------------ | ---------------------- |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §3, §4 | ~5,000       | 要件（該当セクション） |
+| `.github/workflows/ci.yml`                                               | ~800         | 修正対象               |
+| `.github/workflows/staging.yml`                                          | ~900         | #10 修正対象           |
+| `.github/workflows/production.yml`                                       | ~800         | #10 修正対象           |
+| `.github/workflows/issue-lifecycle.yml`                                  | ~1,000       | #10 修正対象           |
+| `ci/policy_check.py`                                                     | ~1,600       | 参考                   |
+| `docs/policies.md`                                                       | ~1,200       | P-040 確認             |
+| `pyproject.toml.template`                                                | ~600         | 依存追加先             |
+| **合計**                                                                 | **~11,900**  |                        |
+
+#### 推定総トークン消費: ~55K / 128K
+
+#### コンテキスト切れ許容タイミング
+
+- **セッション開始前**: OK
+- **#5 + #6 完了後**: OK（#10 は独立）
+- **セッション完了後**: OK
+
+#### 作業指示文（コピペ用）
+
+````
+以下の3つの改善を実施してください。
+
+## 作業1: pip-audit / gitleaks の CI 統合（要件 #5）
+`.github/workflows/ci.yml` に以下の2つのセキュリティスキャンステップを追加してください:
+
+1. **pip-audit**: Python 依存パッケージの既知脆弱性スキャン
+   - `pip install pip-audit` → `pip-audit --strict` を実行
+   - pyproject.toml が存在する場合のみ実行する条件分岐付き
+
+2. **gitleaks**: Git 履歴内のシークレット漏洩スキャン
+   - `gitleaks/gitleaks-action` をコミットハッシュ固定で使用
+   - または `trufflehog` の GitHub Action を代替として使用
+   - セキュリティルール: サードパーティ Action はコミットハッシュ固定必須
+
+docs/policies.md の P-040（依存関係監査）を参照し、整合性を確認してください。
+
+## 作業2: SBOM 生成・署名の CI 統合（要件 #6）
+`.github/workflows/ci.yml` または `production.yml` に SBOM 生成ステップを追加してください:
+- `anchore/syft` で SBOM を CycloneDX 形式で生成
+- 成果物として GitHub Actions artifacts にアップロード
+- 注意: `cosign` による署名は将来課題とし、SBOM 生成のみを実装する
+- サードパーティ Action はコミットハッシュ固定必須
+
+## 作業3: concurrency / キャッシュ設定の追加（要件 #10）
+全ワークフローファイル（ci.yml, staging.yml, production.yml, issue-lifecycle.yml）に
+以下を追加してください:
+
+1. **concurrency 設定**:
+   ```yaml
+   concurrency:
+     group: ${{ github.workflow }}-${{ github.ref }}
+     cancel-in-progress: true
+````
+
+2. **uv キャッシュ設定**（ci.yml のみ）:
+   Python セットアップ後に uv のキャッシュを有効化してください。
+
+## 完了後
+
+1. 全ワークフローファイルの YAML 構文チェック
+2. get_errors ツールで全体エラーゼロを確認
+3. concurrency 設定が全ワークフローに存在することを確認
+
+```
+
+#### 期待される成果物
+
+- `ci.yml`: pip-audit + gitleaks ステップ追加、uv キャッシュ追加、concurrency 追加
+- `staging.yml`, `production.yml`, `issue-lifecycle.yml`: concurrency 追加
+- （オプション）`production.yml`: SBOM 生成ステップ追加
+
+---
+
+### Session 3: P1 運用基盤・モデル最適化（要件 #7, #8, #9）
+
+#### 目的
+
+本番昇格記録の永続化、エージェント別モデル割当最適化、ロールバック手順の追加。
+
+#### 読み込みファイル一覧
+
+| ファイル                                      | 推定トークン | 用途                           |
+| --------------------------------------------- | ------------ | ------------------------------ |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §2, §4, §7 | ~6,000 | 要件（該当セクション） |
+| `docs/runbook.md`                             | ~1,300       | #9 修正対象                    |
+| `docs/orchestration.md` §7（モデル管理）      | ~3,000       | #8 参考                        |
+| `.github/workflows/production.yml`            | ~800         | #7 修正対象                    |
+| `scripts/update_agent_models.sh`              | ~800         | #8 手順確認                    |
+| `project-config.yml`                          | ~1,000       | #8 モデル設定                  |
+| agent定義 2-3ファイル（確認用）               | ~5,000       | #8 現状確認                    |
+| **合計**                                      | **~17,900**  |                                |
+
+#### 推定総トークン消費: ~55K / 128K
+
+#### コンテキスト切れ許容タイミング
+
+- **セッション開始前**: OK
+- **#7 完了後**: OK（#8, #9 はそれぞれ独立）
+- **#8 完了後**: OK
+- **セッション完了後**: OK
+
+#### 作業指示文（コピペ用）
+
+```
+
+以下の3つの改善を実施してください。
+
+## 作業1: 本番昇格記録の永続化（要件 #7）
+
+`.github/workflows/production.yml` の「Record production promotion」ステップを改善してください。
+現状は `echo` でログに出力するだけで永続化されていません。
+
+以下のいずれかの方法で永続化してください:
+
+1. **GitHub Releases への記録**（推奨）:
+   - `gh release create` で本番昇格ごとにリリースを作成
+   - リリースノートにコミット SHA、タイムスタンプ、承認者を記録
+2. **リポジトリ内ファイルへの追記**:
+   - `outputs/production_log.md` 等に追記してコミット
+   - ただしワークフロー内でのコミットは無限ループに注意
+
+`docs/policies.md` の P-020（監査ログ）との整合性を確認してください。
+
+## 作業2: エージェント別モデル割当の最適化（要件 #8）
+
+`project-config.yml` の `[agents]` セクションで、各エージェントに推奨モデルを設定してください。
+`docs/orchestration.md` §7 のコスト分析を参考にします。
+
+推奨割当:
 | エージェント | 推奨モデル | 理由 |
-|---|---|---|
-| orchestrator | Opus 4.6 or Sonnet 4.6 | 高度な判断・調整が必要 |
-| implementer | Sonnet 4.6 | SWE-bench最強クラス、コスト1x |
-| test-engineer | Sonnet 4.6 / Haiku 4.5 | 反復的テスト生成に適する |
-| auditor-spec | Sonnet 4.6 | 論理照合が主タスク |
-| auditor-security | Sonnet 4.6 | パターンマッチ主体 |
-| auditor-reliability | Sonnet 4.6 | 信頼性分析 |
-| release-manager | Opus 4.6 | 最終判定、最高品質が必要 |
+|--------------------|------------------|-------------------------------|
+| orchestrator | Claude Opus 4.6 | 高度な判断・調整が必要 |
+| implementer | Claude Sonnet 4.6| SWE-bench 最強、コスト 1x |
+| test-engineer | Claude Sonnet 4.6| 反復的テスト生成に適する |
+| auditor-spec | Claude Sonnet 4.6| 論理照合が主タスク |
+| auditor-security | Claude Sonnet 4.6| パターンマッチ主体 |
+| auditor-reliability| Claude Sonnet 4.6| 信頼性分析 |
+| release-manager | Claude Opus 4.6 | 最終判定、最高品質が必要 |
 
-#### ② エージェント間通信がナチュラルランゲージ依存
+設定後、`scripts/update_agent_models.sh` を実行してエージェント定義に反映してください。
+configs/ai_models.toml が存在しない場合は作成してください。
 
-現状、エージェント間のメッセージは自然言語のみ。応答フォーマットの「報告フォーマット」セクションが各エージェント定義に存在するが、**スキーマ検証がない**。Orchestratorが誤フォーマットの応答を受け取った場合の処理が未定義。
+## 作業3: ロールバック手順の追加（要件 #9）
 
-改善案: JSON Schemaや Pydantic モデルで報告フォーマットを型定義し、Orchestratorが受信時にバリデーションする。
+`docs/runbook.md` に以下のロールバック手順セクションを追加してください:
 
-#### ③ 並列監査の実装保証がない
+1. **フィーチャーブランチの巻き戻し**
+   - `git revert` による安全な取り消し手順
+   - 強制プッシュの禁止（main/master ブランチ保護）
 
-Step 5「3つの監査エージェントに**並行**して委譲」と記述されているが、LLMエージェントのサブエージェント呼び出しは多くの実装でデフォルト逐次実行。並列実行の確保には、明示的な並列実行指示またはフレームワークレベルの保証が必要。
+2. **本番リリースのロールバック**
+   - GitHub Releases から前バージョンの特定手順
+   - 本番環境への再デプロイ手順
 
-#### ④ エージェント状態の永続化がない
+3. **ポリシー違反発覚時の復旧フロー**
+   - 即時停止条件との連携（copilot-instructions.md 参照）
+   - エスカレーション手順
 
-Orchestratorが中断した場合（LLMのコンテキストウィンドウ超過・ネットワーク障害等）、パイプライン状態を復元する機構がない。Step番号・ループカウント・監査結果等をファイルまたは外部ストアに永続化することを推奨。
+## 完了後
 
----
+1. get_errors ツールで全体エラーゼロを確認
+2. runbook.md のロールバック手順が停止条件と対称的であることを確認
+3. セルフレビュー（P-001〜P-003 違反なし）
 
-## 3. セキュリティアーキテクチャ
-
-### 優れている点
-
-- `auditor-security` に `editFiles` / `runInTerminal` を付与しない（読み取り専用）設計は最小権限の原則の模範的な実装
-- CIでのサードパーティActionをコミットハッシュで固定（`actions/checkout@34e11...`）はサプライチェーン攻撃への対策として正しい
-- `git add -A` の代わりに特定ファイルを指定すべきとの原則を持つが（HITL承認原則）、Step 7のコード例では `git add -A` を使用しており矛盾している
-
-### 課題
-
-#### ① `policy_check.py` のスキャン対象が不完全
-
-```python
-# ci/policy_check.py L22-L27（実測確定値）
-# スキャン対象ディレクトリ（プロジェクトに合わせて変更）
-SCAN_DIRS = [
-    REPO_ROOT / "src",
-    REPO_ROOT / "tests",
-    REPO_ROOT / "scripts",
-]
 ```
 
-`.github/` 配下（エージェント定義・instructions・workflows）がスキャン対象外。エージェント定義ファイルに誤ってシークレットが記述された場合に検出できない。
+#### 期待される成果物
 
-#### ② シークレット検出パターンが時代遅れ
+- `production.yml`: 昇格記録の永続化ステップ
+- `project-config.yml` or `configs/ai_models.toml`: モデル割当設定
+- agent定義ファイル: モデル設定の反映
+- `docs/runbook.md`: ロールバック手順セクション追加
 
-```python
-# ci/policy_check.py L65（実測確定値）
-r"sk-[A-Za-z0-9]{32,}",  # 汎用 API キー
+---
+
+### Session 4: P2 エージェント通信の型安全化（要件 #11, #12, #13）
+
+#### 目的
+
+エージェント応答の JSON Schema 定義、並列監査の実行保証、パイプライン状態の永続化。
+
+#### 読み込みファイル一覧
+
+| ファイル                                      | 推定トークン | 用途                           |
+| --------------------------------------------- | ------------ | ------------------------------ |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §2, §8 | ~5,000 | 要件 |
+| `docs/orchestration.md`                       | ~9,400       | パイプライン設計の全体像       |
+| `agents/orchestrator.agent.md` or `.github/agents/orchestrator.agent.md` | ~10,000 | 修正対象 |
+| `.github/copilot-instructions.md`             | ~4,000       | パイプライン定義（自動付与済み）|
+| **合計**                                      | **~28,400**  |                                |
+
+#### 推定総トークン消費: ~60K / 128K
+
+#### 注意: このセッションは設計判断を含む
+
+#11（JSON Schema）と #25（型安全オーケストレーション）は関連するため、
+Session 7 の #25 を先に検討してから #11 に着手する選択もある。
+ただし #11 は現行アーキテクチャ内での改善であり、#25 はアーキテクチャ変更のため、独立実施可能。
+
+#### コンテキスト切れ許容タイミング
+
+- **セッション開始前**: OK
+- **#11 完了後**: OK（#12, #13 は独立）
+- **セッション完了後**: OK
+
+#### 作業指示文（コピペ用）
+
 ```
 
-- Anthropic APIキーの現行フォーマット: `sk-ant-api03-...`
-- OpenAI APIキーの現行フォーマット: `sk-proj-...`
-- 上記パターンは誤検知（短いsk-プレフィックス文字列）と見逃し（新フォーマット）の両方のリスクがある
+以下の3つの改善を実施してください。
+事前に `docs/orchestration.md` を読んでパイプラインの全体設計を把握してください。
 
-最新の検出ツール（**Trufflehog v3**、**gitleaks**）をCIに統合することを強く推奨。
+## 作業1: エージェント応答のスキーマ定義（要件 #11）
 
-#### ③ 依存関係脆弱性スキャンがない
+エージェントの報告フォーマットを明確化するため、以下を実施してください:
 
-P-040（依存関係監査）はポリシーで定義されているが、CIで自動検査されていない。`pip-audit`、`safety`、またはGitHub Dependabotの導入が必要。
+1. `docs/orchestration.md` に「エージェント応答スキーマ」セクションを追加し、
+   各エージェントの報告に含めるべきフィールドを定義する:
+   - `status`: "success" | "failure" | "partial"
+   - `summary`: 自然言語の要約
+   - `findings`: 具体的な指摘事項のリスト（severity, file, line, message）
+   - `metrics`: 定量的な指標（テスト数、カバレッジ等）
 
-#### ④ production.yml でのActionピン留め漏れ
+2. `copilot-instructions.md` の各エージェント委譲ステップに、
+   「報告は上記スキーマに従うこと」と明記する
 
-`ci.yml` では `actions/checkout@<hash>` を使用しているが、`production.yml` では `actions/checkout@v4`（タグ指定）を使用。セキュリティ要件が最も厳しい本番ワークフローでのみピン留めが外れているのは重大な矛盾。
+注意: 現時点では Copilot Chat の制約上、JSON スキーマの強制的なバリデーションは
+実装できない。ドキュメントベースの規約として定義し、将来のフレームワーク移行時に
+型安全化する設計とする。
 
-#### ⑤ SBOM生成・署名がない
+## 作業2: 並列監査の実行指示明確化（要件 #12）
 
-最新のSAST/SBOMベストプラクティス（SLSA Level 2以上）では、ビルド成果物に対するソフトウェア部品表（SBOM）の生成と署名（sigstore/Cosign）が標準的。
+`copilot-instructions.md` および `docs/orchestration.md` の監査ステップ（Step 6）で、
+3つの監査エージェントの「並列実行」について明確な指示を追加してください:
 
----
+- orchestrator.agent.md に「3つの監査エージェントを **可能な限り並列に** 呼び出すこと。
+  フレームワークが逐次実行しかサポートしない場合は、その旨を報告すること」と記載
+- 並列実行の可否はプラットフォーム依存であることを注記する
 
-## 4. CI/CDパイプライン
+## 作業3: パイプライン状態の永続化設計（要件 #13）
 
-### 課題（重大）
+パイプライン中断時の復旧のため、状態永続化の仕組みを設計・実装してください:
 
-**現状のCIは品質ゲートとして事実上機能していない。**
+1. `.github/agents/orchestrator.agent.md` に以下の指示を追加:
+   - 各ステップ完了時に `outputs/pipeline_state.json` に状態を書き出す
+   - 状態ファイルのフォーマット: { step, loop_count, branch, audit_results, timestamp }
+   - パイプライン開始時に状態ファイルが存在すれば復旧を試みる
 
-```yaml
-steps:
-  - name: Policy check
-    run: python ci/policy_check.py
-  # - name: Lint        ← コメントアウト
-  # - name: Format check ← コメントアウト
-  # - name: Type check   ← コメントアウト
-  # - name: Test         ← コメントアウト
-```
+2. `docs/orchestration.md` に状態永続化の設計セクションを追加
 
-requirements.md の成功条件「CI が品質ゲートとして機能し、失敗時はマージできない」と完全に矛盾する。テンプレートの性質上コメントアウトは理解できるが、**bootstrap.sh実行後に自動的にアンコメントされる仕組みがない**ことが問題。
+## 完了後
 
-#### ② `concurrency` 設定がない
+1. orchestration.md の応答スキーマセクションが整合的であることを確認
+2. get_errors ツールで全体エラーゼロを確認
 
-```yaml
-# 推奨追加
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-```
-
-同一PRへの連続pushで不要なランが積み上がりコストが増大する。
-
-#### ③ キャッシュ設定がない
-
-Python依存関係のキャッシュ（`cache: 'pip'` または uv cache）がなく、毎回フルインストールが発生する。
-
-#### ④ テストカバレッジのCI強制なし
-
-AC-010「テストが追加/更新されている」はレビュー依存。`pytest --cov --cov-fail-under=80` 等でカバレッジ閾値をCI強制することを推奨。
-
-#### ⑤ 本番記録が `echo` のみ
-
-```yaml
-- name: Record production promotion
-  run: |
-    echo "Commit: ${{ github.sha }}"
-    echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-```
-
-この記録はログに流れるだけで**永続化されない**。P-020（監査ログ）との整合性がない。GitHub Releasesへの記録、または外部監査ログストレージへの書き込みが必要。
-
----
-
-## 5. コード品質・テスト設計
-
-### 優れている点
-
-`src/sample/example_module.py` の Design by Contract 実装と `tests/test_sample_properties.py` の Hypothesis 活用は、2025年時点のPythonベストプラクティスに合致した模範的なサンプル。
-
-特に **単調性テスト**（`multiplier1 < multiplier2 → result1 ≤ result2`）は関数の数学的性質を直接検証するアプローチであり、等価分割・境界値テストより高い発見力を持つ。
-
-### 課題
-
-#### ① ミューテーションテストの不在
-
-テスト品質（NFR-020）を謳うが、テスト自体の有効性を検証する**ミューテーションテスト**（mutmut, cosmic-ray）がない。プロパティテストがあっても、テストが実際に欠陥を検出できるかの保証は別途必要。
-
-#### ② 型スタブのカバレッジ
-
-`src/observability/tracing.py` の `get_tracer()` 戻り値が `Any` またはNone合体型になっている可能性が高く、strict mypyで問題が生じうる。Optional型の正確な定義が必要。
-
-#### ③ `__init__.py` 生成スクリプトが空ファイルを生成
-
-`scripts/init_packages.sh` で生成される `__init__.py` が空の場合、パブリックAPIの意図的な公開宣言（`__all__`）がなく、`from module import *` での意図しないシンボル露出リスクがある。
-
----
-
-## 6. ドキュメント管理（SSOT）
-
-### 優れている点
-
-- `docs/` をSSOTとして一元管理し、「会話ログを仕様の根拠にしない」（P-030）という原則は、LLMを使った開発で特に重要な品質担保メカニズム
-- ADR（Architecture Decision Records）フレームワークの採用はベストプラクティス準拠
-- `docs/orchestration.md` の詳細度（Mermaid図・エージェントマトリクス・フロー図）は高品質
-
-### 課題
-
-#### ① 要件定義が実質的に空
-
-`docs/requirements.md` の機能要件（FR-001, FR-010）がプレースホルダーのまま。これはテンプレートとして意図的だが、Orchestratorが起動時に必ず読む5ファイルの1つとして定義されており、実プロジェクトに適用する前のバリデーション手順が必要。
-
-#### ② モデル一覧の信頼性問題
-
-`docs/orchestration.md §7.2` の利用可能モデル一覧に実在しないまたは不確かなモデル名が含まれる可能性がある。AIモデルのリリースサイクルはドキュメント更新頻度より速く、静的な一覧を維持することは現実的でない。モデル選定ガイドラインに留め、具体的モデル名は `project-config.yml` のみで管理する構造が望ましい。
-
-#### ③ `docs/constraints.md` の具体性欠如
-
-制約仕様として重要な役割を担うが、閾値・トリガー条件等がテンプレートのまま。エージェントが制約判定に使用できる具体的な数値定義が必要。
-
----
-
-## 7. 運用・可観測性
-
-### 課題
-
-#### ① エージェントパイプラインの可観測性がない
-
-`src/observability/tracing.py` はアプリケーションコードのトレーシングを提供するが、**AIエージェントパイプライン自体の可観測性**（各ステップのレイテンシ・トークン使用量・コスト・成功率）が完全に欠如している。
-
-推奨: OpenTelemetry の `span` をエージェント呼び出し単位で設定し、以下を計測：
-- 各ステップ（Step 1-11）の実行時間
-- サブエージェントへの委譲回数・成功率
-- 修正ループ回数の分布
-- CI失敗率
-
-#### ② コスト制御がない
-
-全エージェントがClaude Opus 4.6を使用し、Bounded Recursionが3回まで実行される場合の最大コストが見積もられていない。**予算上限（Budget cap）** の定義と、超過時の自動停止機構が必要。
-
-#### ③ 監査証跡の完全性
-
-P-020（監査ログ）で「重要な判断・制約判定を記録する」と定義されているが、現状では監査エージェントの出力はPRコメントとして残るのみ。Gitリポジトリ外の**永続的な監査ログストレージ**（CloudWatch Logs, BigQuery, S3等）への書き込みがない。
-
----
-
-## 8. 最新技術動向との整合性
-
-### 整合している点（高評価）
-
-| 技術・手法 | 採用状況 |
-|---|---|
-| Model Context Protocol (MCP) | Serena MCPで統合済み |
-| Design by Contract | サンプル実装あり |
-| Property-based Testing | Hypothesis採用 |
-| Conventional Commits | 明文化済み |
-| Agent specialization | 7エージェント分離 |
-| Shift-Left Security | Serena Stage 1-3 |
-| HITL for autonomous agents | 最終マージで強制 |
-| ASI (AI Security Indicators) | ASI01-07準拠 |
-
-### 未採用の最新手法
-
-#### ① 型安全なエージェントオーケストレーション
-
-自然言語ベースのエージェント間通信ではなく、**LangGraph** や **Pydantic AI** のような型安全な状態機械ベースのオーケストレーションフレームワークの採用を検討すべき。これらは状態の型保証・グラフの視覚化・再現可能な実行トレースを提供する。
-
-#### ② Evals（評価フレームワーク）
-
-パイプラインの品質を測定する **evaluation framework**（Braintrust, LangSmith, Promptfoo等）がない。パイプライン全体の「精度」（正しい実装を生成できた割合）をCI/CDに組み込む設計が望ましい。
-
-#### ③ Structured Outputs / Tool Calling の活用
-
-エージェント間の報告がMarkdownテキストであるため、Orchestratorが結果をパースする必要がある。`response_format={"type": "json_schema"}` 等のStructured Outputsを活用することで、エージェント応答の型安全性を確保できる。
-
-#### ④ AI Gateway / Proxy レイヤー
-
-全エージェントが直接LLM APIを呼び出す設計では、レート制限・コスト管理・フォールバック・キャッシュ等の横断的関心事を集中管理できない。**LiteLLM**・**PortKey**・**Helicone** 等のAI Gatewayレイヤーの導入を推奨。
-
----
-
-## 9. 効率性・パフォーマンス
-
-### 主要なボトルネック
-
-#### ① Copilotレビュー待機のポーリング方式
-
-```bash
-for i in $(seq 1 20); do
-  sleep 30  # 30秒 × 最大20回 = 最大10分
-  ...
-done
-```
-
-固定インターバルポーリングは非効率。GitHub Webhooksを使用したイベント駆動待機への移行で、平均待機時間を大幅に削減できる。
-
-#### ② コメント安定化フェーズの複雑さ
-
-コメントカウントが安定するまで待機するロジックは脆弱（GitHub APIのキャッシュ遅延・ネットワーク条件依存）。代替として、レビューの `state: PENDING → SUBMITTED` 遷移を監視する方が信頼性が高い。
-
-#### ③ 逐次実行が支配的なパイプライン
-
-監査3エージェントの並列化が明記されているが、他のステップ（implementer→test-engineer、ローカルCI→PR CI）は逐次。実際のスループット向上には、テスト作成とCIを同時進行させる並列フロー設計が有効。
-
----
-
-## 10. 総括：優先改善事項
-
-### P0（即座に対処すべき）
-
-| # | 課題 | 対応方針 | 観点 |
-|---|---|---|---|
-| 1 | `production.yml` の `actions/checkout@v4` をコミットハッシュに固定 | セキュリティ担保の根本的矛盾 | セキュリティ |
-| 2 | CIの品質チェックをコメントアウトから復活 | bootstrap後に自動有効化するスクリプトを追加 | CI/CD |
-| 3 | `policy_check.py` の `SCAN_DIRS`（L23-27）に `.github/` を追加 | エージェント定義内のシークレット漏洩リスク対策 | セキュリティ |
-| 4 | `policy_check.py` L65 の `sk-` パターンを現行フォーマットに更新 | `sk-ant-api03-` / `sk-proj-` 等の見逃し解消 | セキュリティ |
-
-### P1（次のイテレーションで対処）
-
-| # | 課題 | 対応方針 | 観点 |
-|---|---|---|---|
-| 5 | `pip-audit` / `gitleaks` をCIに統合 | P-040の自動執行・`sk-` パターン補完 | セキュリティ |
-| 6 | SBOM生成（syft + Cosign）をCIに統合 | SLSA Level 2 準拠 | セキュリティ |
-| 7 | 監査ログの永続化 | production-recordをファイル/外部ストレージへ書き込む | CI/CD・運用 |
-| 8 | エージェント別モデル割当の最適化 | Opus 4.6をOrchestrator/RMのみに限定 | AIエージェント |
-| 9 | ロールバック手順をrunbook.mdに追記 | 停止条件と対称的な復旧手順を定義 | アーキテクチャ |
-| 10 | concurrency設定・キャッシュ設定をCIに追加 | ランコスト削減 | CI/CD |
-
-### P2（計画的に対処）
-
-| # | 課題 | 対応方針 | 観点 |
-|---|---|---|---|
-| 11 | エージェント応答のJSON Schema定義とバリデーション追加 | エージェント間通信の型安全化 | AIエージェント・最新技術 |
-| 12 | 並列監査の実行保証を明示（`--parallel` or フレームワーク設定）| 監査3エージェントの同時実行を保証 | AIエージェント |
-| 13 | パイプライン状態の永続化 | Step番号・ループカウントをファイル/KVSに書き出す | AIエージェント |
-| 14 | OTelスパンをエージェントパイプライン全体に適用 | パイプライン可観測性の確立 | 運用・可観測性 |
-| 15 | 予算上限（Budget cap）とコスト可視化の導入 | AI Gatewayレイヤーの検討 | 運用・可観測性 |
-| 16 | ミューテーションテストの追加（mutmut / cosmic-ray）| テスト有効性の担保 | コード・テスト |
-| 17 | AI Gateway（LiteLLM等）レイヤーの導入 | レート制限・フォールバック・キャッシュの集中管理 | 最新技術 |
-| 18 | `src/observability/tracing.py` 戻り値型を `Optional[Tracer]` に修正 | strict mypy 対応 | コード・テスト |
-| 19 | `scripts/init_packages.sh` を `__all__` 付き `__init__.py` 生成に修正 | 意図しないシンボル露出の防止 | コード・テスト |
-| 20 | `docs/requirements.md` の FR-001/FR-010 を実値で埋める手順を追加 | テンプレート適用前バリデーション | ドキュメント |
-| 21 | `docs/constraints.md` に具体的な閾値・トリガー条件を記入 | エージェントが制約判定に利用できる数値定義 | ドキュメント |
-| 22 | `docs/orchestration.md §7.2` のモデル一覧を `project-config.yml` に移管 | 静的一覧の鮮度問題を解消 | ドキュメント |
-| 23 | impl→test の逐次フローをTDD並列フローに変更 | テスト設計を実装前に並行実施 | アーキテクチャ |
-| 24 | Eval フレームワーク（Promptfoo / Braintrust 等）の導入 | パイプライン品質の定量計測 | 最新技術 |
-| 25 | 型安全なオーケストレーション（LangGraph / Pydantic AI）の採用検討 | 状態機械ベースの再現可能な実行トレース | 最新技術 |
-
----
-
-## 11. 各観点 ★★★★★ 到達ロードマップ
-
-### ★5 到達に必要な改善の観点別マッピング
-
-| 観点 | 現状 | 必要な改善（番号は §10 の # に対応） |
-|---|---|---|
-| アーキテクチャ設計 | ★★★★☆ | #9（ロールバック）、#23（TDD並列フロー）|
-| AIエージェント設計 | ★★★★☆ | #8（モデル最適化）、#11（JSON Schema）、#12（並列監査）、#13（状態永続化）|
-| セキュリティ | ★★★☆☆ | #1（本番ピン留め）、#3（.github/ 追加）、#4（sk-更新）、#5（gitleaks）、#6（SBOM）|
-| CI/CD品質 | ★★☆☆☆ | #2（品質チェック復活）、#7（監査ログ永続化）、#10（concurrency/cache）|
-| コード・テスト設計 | ★★★★☆ | #16（ミューテーションテスト）、#18（型スタブ）、#19（`__init__.py`）|
-| ドキュメント管理 | ★★★★☆ | #20（requirements.md）、#21（constraints.md）、#22（モデル一覧移管）|
-| 運用・可観測性 | ★★☆☆☆ | #7（監査ログ）、#14（OTelスパン）、#15（Budget cap）|
-| 最新技術動向整合性 | ★★★★☆ | #11（Structured Outputs）、#17（AI Gateway）、#24（Evals）、#25（型安全オーケストレーション）|
-
-### 改善フェーズ別ロードマップ
-
-```
-フェーズ1（P0：即時）
-  #1 production.yml ピン留め
-  #2 CI 品質チェック復活
-  #3 policy_check.py .github/ 追加
-  #4 sk- パターン更新
-  → セキュリティ: ★★★★☆  CI/CD: ★★★★☆
-
-フェーズ2（P1：次イテレーション）
-  #5-10 gitleaks / SBOM / 監査ログ / モデル最適化 / ロールバック / concurrency
-  → セキュリティ: ★★★★★  CI/CD: ★★★★★  アーキテクチャ: ★★★★★（#9対応で+0.5）
-     AIエージェント: ★★★★★（#8対応で+0.5）  運用: ★★★★☆
-
-フェーズ3（P2：計画的）
-  #11-25 JSON Schema / 並列監査 / 状態永続化 / OTel / Evals / ドキュメント整備 等
-  → 全観点 ★★★★★ 到達
 ```
 
 ---
 
-## 最終所感
+### Session 5: P2 可観測性・コスト管理（要件 #14, #15, #17）
 
-このテンプレートは、**AIエージェントを使った自動開発パイプラインの設計思想として現時点で最も洗練されたクラス**に位置する。特に、ASI準拠のセキュリティ設計・Bounded Recursion・SSOT原則・Serena MCP統合は、業界標準より先行している。
+#### 目的
 
-一方、設計と実装の乖離（CIがコメントアウト、全エージェントがOpus 4.6、シークレット検出が不完全）は「優れたテンプレート」を「実際に機能するシステム」にするためのギャップであり、実プロジェクトへの適用前に §10 P0/P1 事項への対処が必須。全観点 ★★★★★ 達成には §11 のフェーズ3完了が必要となる。
+エージェントパイプライン層の OpenTelemetry スパン設計、予算上限の定義、AI Gateway レイヤーの設計。
+
+#### 読み込みファイル一覧
+
+| ファイル                                      | 推定トークン | 用途                     |
+| --------------------------------------------- | ------------ | ------------------------ |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §7 | ~3,000 | 要件 |
+| `src/observability/tracing.py`                | ~2,200       | 現行 OTel 実装           |
+| `docs/orchestration.md` §6, §7               | ~5,000       | パイプライン設計         |
+| `docs/observability-guide.md`                 | ~3,400       | 既存の可観測性ガイド     |
+| **合計**                                      | **~13,600**  |                          |
+
+#### 推定総トークン消費: ~50K / 128K（余裕あり）
+
+#### コンテキスト切れ許容タイミング
+
+- 全タイミングで OK（独立した設計・文書作業が中心）
+
+#### 作業指示文（コピペ用）
+
+```
+
+以下の3つの改善を実施してください。
+事前に `src/observability/tracing.py` と `docs/observability-guide.md` を確認してください。
+
+## 作業1: パイプライン層 OTel スパン設計（要件 #14）
+
+`docs/observability-guide.md` に「エージェントパイプラインの計装」セクションを追加してください:
+
+1. 計測対象の定義:
+   - 各ステップ（Step 1-13）の実行時間
+   - サブエージェントへの委譲回数・成功率
+   - 修正ループ回数の分布
+   - CI 実行時間・失敗率
+
+2. スパン階層の設計:
+
+   ```
+   pipeline (root span)
+   ├── plan_selection
+   ├── branch_creation
+   ├── implementation
+   │   └── implementer_call
+   ├── testing
+   │   └── test_engineer_call
+   ├── local_ci
+   │   ├── ruff_check
+   │   ├── mypy
+   │   └── pytest
+   ├── audit
+   │   ├── audit_spec
+   │   ├── audit_security
+   │   └── audit_reliability
+   ├── pr_creation
+   └── review_loop
+   ```
+
+3. 属性（attributes）の定義:
+   - `pipeline.task_id`, `pipeline.branch`, `pipeline.loop_count`
+   - `agent.name`, `agent.model`, `agent.token_usage`
+
+注意: 実装は将来課題とし、本セッションでは設計ドキュメントの整備のみ行う。
+
+## 作業2: 予算上限（Budget cap）の設計（要件 #15）
+
+`docs/orchestration.md` に「コスト管理」セクションを追加してください:
+
+1. 1パイプライン実行あたりの最大コスト見積もり:
+   - 各ステップの最大トークン使用量を推算
+   - Bounded Recursion（最大3回）× 各エージェントのコスト
+   - Opus 4.6: $15/MTok input, $75/MTok output (参考値)
+   - Sonnet 4.6: $3/MTok input, $15/MTok output (参考値)
+
+2. 予算超過時の自動停止条件を定義
+
+3. `copilot-instructions.md` の停止条件に「予算超過」を追加
+
+## 作業3: AI Gateway 検討メモ（要件 #17）
+
+`docs/orchestration.md` に「AI Gateway 検討」セクションを追加してください:
+
+- LiteLLM / PortKey / Helicone の比較表
+- 現時点では Copilot Chat 経由のため直接適用不可であることを注記
+- 将来的にプログラマティック API 呼び出しに移行した際の導入指針
+
+## 完了後
+
+1. observability-guide.md と orchestration.md の新セクション間に矛盾がないことを確認
+2. get_errors ツールで全体エラーゼロを確認
+
+```
 
 ---
 
-*このレポートは `docs/review-report.md` として保存されています。*
+### Session 6: P2 コード品質改善（要件 #16, #18, #19）
+
+#### 目的
+
+ミューテーションテストの導入、`tracing.py` の型修正、`__init__.py` の `__all__` 定義追加。
+
+#### 読み込みファイル一覧
+
+| ファイル                                  | 推定トークン | 用途                 |
+| ----------------------------------------- | ------------ | -------------------- |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §5 | ~3,000 | 要件 |
+| `src/observability/tracing.py`            | ~2,200       | #18 修正対象         |
+| `src/sample/example_module.py`            | ~750         | #19 参考             |
+| `tests/test_sample_properties.py`         | ~1,200       | #16 対象             |
+| `scripts/init_packages.sh`               | ~230         | #19 修正対象         |
+| `pyproject.toml.template`                 | ~600         | #16 ツール追加       |
+| **合計**                                  | **~7,980**   |                      |
+
+#### 推定総トークン消費: ~45K / 128K（余裕大）
+
+#### コンテキスト切れ許容タイミング
+
+- 全タイミングで OK（すべて独立したコード修正）
+
+#### 作業指示文（コピペ用）
+
+```
+
+以下の3つの改善を実施してください。
+
+## 作業1: ミューテーションテスト導入（要件 #16）
+
+テストの有効性を検証するためにミューテーションテストツールを導入してください:
+
+1. `pyproject.toml.template` に `mutmut` を dev 依存に追加
+2. `pyproject.toml.template` に mutmut の設定セクションを追加:
+   ```toml
+   [tool.mutmut]
+   paths_to_mutate = "src/"
+   tests_dir = "tests/"
+   ```
+3. `.github/workflows/ci.yml` にミューテーションテストステップを追加
+   （ただし `continue-on-error: true` で非ブロッキングとする）
+4. `docs/quality-guide.md` にミューテーションテストの説明セクションを追加
+
+## 作業2: tracing.py 戻り値型の修正（要件 #18）
+
+`src/observability/tracing.py` の `_get_tracer()` 関数の戻り値型を修正してください:
+
+- 現状: 戻り値型が曖昧（`Any` または型未指定）
+- 修正: `Optional[Tracer]` を明示し、OpenTelemetry の `tracer` モジュールからの型を使用
+- None ケース（OTel 未インストール時）のハンドリングを型安全にする
+- strict mypy でエラーが出ないことを確認
+
+## 作業3: init_packages.sh の **all** 生成対応（要件 #19）
+
+`scripts/init_packages.sh` を修正して、生成する `__init__.py` に `__all__` を含めるようにしてください:
+
+- 空の `__init__.py` ではなく、`__all__: list[str] = []` を含むファイルを生成
+- 既存の `__init__.py` がある場合は上書きしない（現行動作を維持）
+
+## 完了後
+
+1. `python -c "from src.observability.tracing import _get_tracer"` で import エラーなし確認
+2. get_errors ツールで全体エラーゼロを確認
+
+```
+
+---
+
+### Session 7: P2 ドキュメント・プロセス改善（要件 #20, #21, #22, #23, #24, #25）
+
+#### 目的
+
+requirements.md / constraints.md の実値記入ガイド、モデル一覧の移管、
+TDD 並列フロー検討、Eval フレームワーク検討、型安全オーケストレーション検討。
+
+#### 読み込みファイル一覧
+
+| ファイル                                      | 推定トークン | 用途                     |
+| --------------------------------------------- | ------------ | ------------------------ |
+| `docs/improvement-requirements-dev-orchestration-template-001.md` §1, §6, §8 | ~5,000 | 要件 |
+| `docs/requirements.md`                        | ~1,300       | #20 修正対象             |
+| `docs/constraints.md`                         | ~1,000       | #21 修正対象             |
+| `docs/orchestration.md` §7                    | ~3,000       | #22 修正対象             |
+| `docs/architecture.md`                        | ~900         | 参考                     |
+| `project-config.yml`                          | ~1,000       | #22 移管先               |
+| **合計**                                      | **~12,200**  |                          |
+
+#### 推定総トークン消費: ~55K / 128K
+
+#### コンテキスト切れ許容タイミング
+
+- 全タイミングで OK（すべて独立したドキュメント修正）
+- ただし #23, #24, #25 は設計検討のため、一貫した議論が望ましい
+
+#### 作業指示文（コピペ用）
+
+```
+
+以下の6つの改善を実施してください。#20-#22 は具体的な修正、#23-#25 は設計検討です。
+
+## 作業1: requirements.md のテンプレート適用ガイド追加（要件 #20）
+
+`docs/requirements.md` の FR-001, FR-010 等がプレースホルダーのままです。
+テンプレートとしての性質を維持しつつ、以下を改善してください:
+
+- 各 FR/NFR にコメントで「記入例」を追加（`<!-- 例: ユーザーが ... -->` 形式）
+- 「テンプレート適用時のチェックリスト」セクションを末尾に追加
+- `GETTING_STARTED.md` に requirements.md 記入手順のリンクを確認
+
+## 作業2: constraints.md の閾値テンプレート改善（要件 #21）
+
+`docs/constraints.md` に具体的な閾値定義のテンプレートを追加してください:
+
+- 各制約に `閾値`, `トリガー条件`, `アクション` の3列を明示するテーブル形式
+- 記入例を1つ含める
+
+## 作業3: モデル一覧の project-config.yml 移管（要件 #22）
+
+`docs/orchestration.md` §7.2 のモデル一覧（利用可能モデル表）を整理してください:
+
+- 静的な一覧を削除し、「最新のモデル情報は各プロバイダーの公式ドキュメントを参照」に変更
+- モデル選定の **ガイドライン**（判断基準・コスト考慮事項）は残す
+- 具体的なモデル名は `project-config.yml` の `[models]` セクションのみで管理
+
+## 作業4: TDD 並列フロー検討メモ（要件 #23）
+
+`docs/orchestration.md` に「TDD 並列フローの検討」補足セクションを追加してください:
+
+- 現行: implementer → test-engineer（逐次）
+- 提案: テスト仕様書を先に作成 → implementer と test-engineer が並行で実装
+- メリット: テスト品質の向上、TDD 本来の設計駆動効果
+- デメリット: 調整コスト増、LLM コンテキストの分断
+- 結論: 「将来的に検討」として Issue 化の推奨
+
+## 作業5: Eval フレームワーク検討メモ（要件 #24）
+
+`docs/orchestration.md` に「パイプライン品質評価」セクションを追加してください:
+
+- 目的: パイプラインが「正しい実装」を生成できた割合を計測
+- 候補ツール: Promptfoo, Braintrust, LangSmith
+- 評価軸: CI 通過率、監査指摘数の推移、レビュー修正回数
+- 結論: 「データ蓄積後に導入検討」として Issue 化の推奨
+
+## 作業6: 型安全オーケストレーション検討メモ（要件 #25）
+
+`docs/orchestration.md` に「型安全オーケストレーション」セクションを追加してください:
+
+- LangGraph: 状態機械ベース、グラフの視覚化、再現可能な実行トレース
+- Pydantic AI: 型安全なエージェント呼び出し、バリデーション内蔵
+- 現行 Copilot Chat ベースとの互換性課題
+- 結論: 「プログラマティック API 移行時に再評価」として本テンプレートの将来方針を記載
+
+## 完了後
+
+1. docs/ 内の各ファイル間に矛盾がないことを確認
+2. get_errors ツールで全体エラーゼロを確認
+3. orchestration.md の新セクションが既存構成と整合していることを確認
+
+```
+
+---
+
+## 5. クロスリポジトリ同期ガイド
+
+### 同期方針
+
+本リポジトリ（dev-orchestration-template）での改善完了後、以下のファイルの変更を
+`stock-trading-system` に適用する:
+
+| 変更対象                     | 同期方法                                             |
+| ---------------------------- | ---------------------------------------------------- |
+| `ci/policy_check.py`         | 差分を手動適用（stock-trading-system は拡張版あり）   |
+| `.github/workflows/*.yml`    | 差分を手動適用（stock-trading-system のワークフロー構成が異なる） |
+| `docs/runbook.md`            | ロールバック手順セクションをコピー（適宜調整）       |
+| `docs/orchestration.md`      | 新セクションをコピー（適宜調整）                     |
+| agent定義ファイル            | モデル設定を同期                                     |
+| `scripts/init_packages.sh`   | `__all__` 生成ロジックをコピー                       |
+
+### 同期不要（stock-trading-system 固有）
+
+- `src/trading_system/` 配下のコード修正（#18 の具体的修正箇所が異なる）
+- `docs/risk-limits.md`（stock-trading-system 固有の制約）
+- ドメイン固有のテスト設定
+
+---
+
+## 6. リスクと緩和策
+
+| リスク                             | 影響        | 緩和策                                        |
+| ---------------------------------- | ----------- | --------------------------------------------- |
+| Session 途中でコンテキスト圧縮     | 作業品質低下 | 15ターン到達前に新セッション開始               |
+| CI 追加後の既存テスト失敗          | ブロック     | `continue-on-error: true` で段階的導入        |
+| Action ハッシュの不一致            | CI 停止     | ci.yml の既存ハッシュを基準として統一          |
+| bootstrap.sh 修正による互換性破壊  | テンプレ破損 | 修正前後で `bootstrap.sh --dry-run` テスト     |
+| P2 設計検討がスコープ拡大          | 時間超過     | 検討メモとして記録し、Issue 化で区切る         |
+
+---
+
+_本計画は `docs/improvement-requirements-dev-orchestration-template-001.md` の25項目を実行するための手順書である。_
+```
