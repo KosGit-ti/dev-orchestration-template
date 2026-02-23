@@ -228,3 +228,40 @@
 
 この4点を順に実装すれば、処理フロー・構造・運用の三位一体で成熟し、全観点を実運用レベルで ★★★★★ に到達可能です。
 
+
+
+---
+
+## 8. Copilotレビュー指摘への対応（反映事項）
+
+本改訂では、PRレビューで指摘されやすい「抽象論に寄りすぎる」「実行順序が不明」「完了判定が曖昧」を解消するため、以下の運用ルールを明示する。
+
+### 8.1 このリポジトリ内の実体ファイルへのマッピング
+
+| 改善テーマ | 主要な反映先（既存ファイル） | 反映内容 |
+|---|---|---|
+| CI品質ゲート | `.github/workflows/ci.yml` | lint/format/type/test を必須化し、失敗時マージ不可にする |
+| 本番昇格の証跡 | `.github/workflows/production.yml` | 署名検証・昇格記録の永続化（artifact/外部保管） |
+| ポリシー検査強化 | `ci/policy_check.py` | `.github/` スキャン追加、現行トークン形式の検出改善 |
+| オーケストレーション仕様 | `docs/orchestration.md` | Structured output と状態遷移（失敗理由コード）を明文化 |
+| 復旧手順 | `docs/runbook.md` | 失敗タイプ別ロールバック決定木を追加 |
+| 要件・制約の実値化 | `docs/requirements.md` / `docs/constraints.md` | テンプレート値を実値に置換し、未入力をCIでfail |
+| 可観測性 | `docs/observability-guide.md` / `src/observability/*` | Agent span・token/cost/latency を収集対象に追加 |
+
+### 8.2 完了判定（DoD）を数値で固定
+
+- CI/CD: 必須チェック未通過PRのマージ率 **0%**
+- セキュリティ: high/critical未解消のまま本番昇格 **0件**
+- エージェント: schema違反率 **0%**（失敗は即fail-fast）
+- 運用: 監査イベント欠損率 **0%**、PR単位コスト可視化率 **100%**
+- テスト品質: mutation score のしきい値を設定し、未達PRはfail
+
+### 8.3 実装優先順位（依存関係付き）
+
+1. `ci.yml` 必須ゲート化（他施策の土台）
+2. `policy_check.py` 強化 + secret/SCA導入（安全性の最低ライン）
+3. `production.yml` の署名検証・昇格証跡（供給網保証）
+4. エージェントI/OのSchema化 + 状態永続化（再現性）
+5. OTel + Budget guardrail + Evals常設（継続改善）
+
+> これにより、改善施策が「提案」ではなく「実装順序と合格条件を持つ実行計画」として運用可能になる。
