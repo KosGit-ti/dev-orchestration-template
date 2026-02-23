@@ -3,6 +3,7 @@
 > 作成日: 2026-02-23
 > レビュー報告: `docs/review-improvement-docs-dev-orchestration-template-001.md`
 > 修正対象:
+>
 > - `docs/improvement-plan-dev-orchestration-template-001.md`（5件）
 > - `docs/improvement-requirements-dev-orchestration-template-001.md`（1件）
 
@@ -10,14 +11,14 @@
 
 ## 修正一覧
 
-| # | 優先度 | 対象ファイル | 箇所 | 問題の種別 |
-|---|---|---|---|---|
-| F-1 | 🔴 重大 | improvement-plan | Session 6 作業2・完了後 | 関数名誤り |
-| F-2 | 🔴 重大 | improvement-plan | Session 3 作業2 | セクション名誤り・存在しないファイル参照 |
-| F-3 | 🟡 中程度 | improvement-plan | Session 1 作業1 | 誤誘導となるファイル参照 |
-| F-4 | 🟢 軽微 | improvement-plan | Session 1 作業3 | 要件定義書との乖離 |
-| F-5 | 🟢 軽微 | improvement-plan | §6 リスク表 | 未実装オプションの参照 |
-| F-6 | 🟢 軽微 | improvement-requirements | §9 | 行数の不一致 |
+| #   | 優先度    | 対象ファイル             | 箇所                    | 問題の種別                               |
+| --- | --------- | ------------------------ | ----------------------- | ---------------------------------------- |
+| F-1 | 🔴 重大   | improvement-plan         | Session 6 作業2・完了後 | 関数名誤り                               |
+| F-2 | 🔴 重大   | improvement-plan         | Session 3 作業2         | セクション名誤り・存在しないファイル参照 |
+| F-3 | 🟡 中程度 | improvement-plan         | Session 1 作業1         | 誤誘導となるファイル参照                 |
+| F-4 | 🟢 軽微   | improvement-plan         | Session 1 作業3         | 要件定義書との乖離                       |
+| F-5 | 🟢 軽微   | improvement-plan         | §6 リスク表             | 未実装オプションの参照                   |
+| F-6 | 🟢 軽微   | improvement-requirements | §9                      | 行数の不一致                             |
 
 ---
 
@@ -28,6 +29,7 @@
 **問題**: `_get_tracer`（アンダースコア付き）と記載されているが、実際の関数名は `get_tracer`（アンダースコアなし）。完了確認コマンドが `ImportError` となり、正常実装後も検証が失敗する。
 
 **根拠**: `src/observability/tracing.py` 行99の定義:
+
 ```python
 def get_tracer() -> Any:
 ```
@@ -53,20 +55,23 @@ def get_tracer() -> Any:
 **対象ファイル**: `docs/improvement-plan-dev-orchestration-template-001.md`
 
 **問題**:
-1. `project-config.yml` の `[agents]` セクションは**存在しない**。エージェント別設定は `[ai_models]` の `overrides` サブキーで管理される
+
+1. `project-config.yml` に `agents:` キーは**存在しない**。エージェント別設定は `ai_models:` 配下の `overrides:` サブキーで管理される
 2. `configs/ai_models.toml` は**存在しないファイル**。`update_agent_models.sh` は `project-config.yml` を直接参照しており、このファイルを読み込まない
 
-**根拠**: `project-config.yml` の実際のセクション構成:
+**根拠**: `project-config.yml` は YAML 形式で、以下のトップレベルキーを持つ:
+
 ```
-[project], [toolchain], [source], [roadmap], [policies], [github], [ai_models]
+project:, toolchain:, source:, roadmap:, policies:, github:, ai_models:
 ```
+
 `scripts/update_agent_models.sh` の参照先: `project-config.yml` の `ai_models.default` / `ai_models.overrides`
 
 ### 修正箇所 1: 作業2の設定先説明（行315付近）
 
 ```diff
 -`project-config.yml` の `[agents]` セクションで、各エージェントに推奨モデルを設定してください。
-+`project-config.yml` の `[ai_models]` セクション内 `overrides` サブキーで、各エージェントに推奨モデルを設定してください。
++`project-config.yml` の `ai_models:` キー配下の `overrides:` で、各エージェントに推奨モデルを設定してください。
 ```
 
 ### 修正箇所 2: 作業2の完了後手順（行330付近）
@@ -75,14 +80,14 @@ def get_tracer() -> Any:
 -設定後、`scripts/update_agent_models.sh` を実行してエージェント定義に反映してください。
 -configs/ai_models.toml が存在しない場合は作成してください。
 +設定後、`scripts/update_agent_models.sh` を実行してエージェント定義に反映してください。
-+（スクリプトは `project-config.yml` の `[ai_models]` セクションを直接参照します）
++（スクリプトは `project-config.yml` の `ai_models:` セクションを直接参照します）
 ```
 
 ### 修正箇所 3: 期待される成果物（行359付近）
 
 ```diff
 -- `project-config.yml` or `configs/ai_models.toml`: モデル割当設定
-+- `project-config.yml`（`[ai_models].overrides` セクション）: モデル割当設定
++- `project-config.yml`（`ai_models.overrides`）: モデル割当設定
 ```
 
 ---
@@ -94,6 +99,7 @@ def get_tracer() -> Any:
 **問題**: `staging.yml` の `actions/checkout` は `@v4` タグ指定（ハッシュ固定なし）。Copilot が参照しても有効なコミットハッシュを得られず、混乱の原因になる。
 
 **根拠**: 実ファイルの状態:
+
 - `ci.yml`: `actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5`（ハッシュ固定済み）
 - `staging.yml`: `actions/checkout@v4`（タグ指定、ハッシュなし）
 - `production.yml`: `actions/checkout@v4`（タグ指定、ハッシュなし）← 修正対象
@@ -155,25 +161,30 @@ def get_tracer() -> Any:
 
 **対象ファイル**: `docs/improvement-requirements-dev-orchestration-template-001.md`
 
-**問題**: 「旧レポート（421行）」と記載されているが、現在の `docs/review-report.md` は422行。
+**問題**: 「旧レポート（421行）」と記載されているが、`review-report.md` は今後の改訂で行数が変動しうるため、ハードコードされた行数は不正確になるリスクがある。
 
 ### 修正箇所: §9（行286付近）
 
 ```diff
 -本ドキュメントは旧「リポジトリ総合レビューレポート（421行）」の**簡潔な改訂版（サマリ）**である。
-+本ドキュメントは旧「リポジトリ総合レビューレポート（422行）」の**簡潔な改訂版（サマリ）**である。
++本ドキュメントは旧「リポジトリ総合レビューレポート」の**簡潔な改訂版（サマリ）**である。
 ```
+
+> **検証メモ**: fix-proposal 原案では「422行」への修正を提案していたが、
+> 行数は今後の改訂で変動しうるため、ハードコードした行数を維持するより行数記載自体を削除する方針で修正した。
 
 ---
 
-## 適用優先順序
+## 適用状況
 
-```
-1. F-1（Session 6 実行前に必須）
-2. F-2（Session 3 実行前に必須）
-3. F-3（Session 1 実行前に推奨）
-4. F-4, F-5, F-6（任意のタイミングで適用可）
-```
+| #   | ステータス  | 修正方針                                                     |
+| --- | ----------- | ------------------------------------------------------------ |
+| F-1 | ✅ 適用済み | 提案通り                                                     |
+| F-2 | ✅ 適用済み | 提案通り                                                     |
+| F-3 | ✅ 適用済み | 提案通り                                                     |
+| F-4 | ✅ 適用済み | 注記追加のみ（`docs/` はリストに残し条件付き追加として明記） |
+| F-5 | ✅ 適用済み | 提案通り                                                     |
+| F-6 | ✅ 適用済み | 行数を削除する方針に変更（今後の改訂で変動しうるため）       |
 
 ---
 
