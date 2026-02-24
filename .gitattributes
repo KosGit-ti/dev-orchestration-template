@@ -1,0 +1,13 @@
+# 改行コードを LF に統一（CRLF 自動変換による差分ノイズを防止）
+* text=auto eol=lf
+
+# バイナリファイル
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
