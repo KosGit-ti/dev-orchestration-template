@@ -1,13 +1,31 @@
 # 改行コードを LF に統一（CRLF 自動変換による差分ノイズを防止）
 * text=auto eol=lf
+*.sh   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
 
-# バイナリファイル
+# バイナリファイル（画像・アーカイブ）
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.ico binary
+*.svg binary
 *.pdf binary
 *.zip binary
 *.gz binary
 *.tar binary
+
+# バイナリファイル（フォント）
+*.woff binary
+*.woff2 binary
+*.eot binary
+*.ttf binary
+*.otf binary
+
+# バイナリファイル（コンパイル済み）
+*.pyc binary
+*.pyo binary
+*.so binary
+*.dylib binary
+*.dll binary
