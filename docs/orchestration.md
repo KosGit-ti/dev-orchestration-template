@@ -278,9 +278,9 @@ flowchart TD
 - `gh pr checks <PR番号> --watch` で CI 結果を監視
 - 失敗時は修正 → 再プッシュ（最大3回）
 
-#### Step 9: Copilot コードレビュー対応ループ
+#### Step 9: Copilot コードレビュー対応（初回レビューのみ）
 
-§5 で詳述。最大3回のイテレーション。
+§5 で詳述。初回レビューのみ取得し、最大3回のイテレーションで指摘対応。
 
 #### Step 10: リリース判定
 
@@ -348,26 +348,39 @@ Serena MCP はセマンティックなコード理解（シンボル検索、参
 
 ## 5. Copilot コードレビュー統合
 
-### 5.1 設計原則
+### 5.1 概要
+
+GitHub Copilot Code Review は **PR 作成時に自動トリガーされる初回レビューのみ** を対象とする。
+修正 push 後の再レビュー依頼は API 制限により自動化不可能であるため、
+**静的解析（CI + get_errors）の通過をもって品質ゲート** とする。
+
+### 5.2 技術的背景（API 制限）
+
+API 経由での Copilot 再レビュー依頼は以下のすべてが失敗する（2025-07 検証済み）：
+
+| 方法 | 結果 |
+|---|---|
+| REST API `POST /requested_reviewers` | Bot に対しては `requested_reviewers: []`（無視） |
+| GraphQL `requestReviews` | Bot ノード ID を User として解決できない |
+| dismiss → 再リクエスト | COMMENTED レビューは dismiss 不可（422 エラー） |
+
+唯一の再レビュー手段は GitHub GUI の「Re-request review」ボタンのみ。
+
+### 5.3 設計原則
 
 | # | 原則 | 説明 |
 |---|---|---|
-| 1 | Push 型アーキテクチャ | push だけでレビューをトリガー |
-| 2 | Bounded Recursion | 最大3回のイテレーションでループ制限 |
-| 3 | 静的解析ファースト | AI レビュー前に CI + get_errors を必ず通過させる |
-| 4 | CI ≠ レビュー | CI 通過とレビュー完了は独立事象として扱う |
+| 1 | 初回レビューのみ取得 | 再レビュー依頼は行わない（API 制限） |
+| 2 | 静的解析が品質ゲート | 修正後は CI + get_errors の通過で品質を担保 |
+| 3 | Bounded Recursion | 最大3回のイテレーションでループ制限 |
+| 4 | 静的解析ファースト | AI レビュー前に CI + get_errors を必ず通過させる |
 
-### 5.2 前提条件
-
-1. **Ruleset: Review new pushes** — リポジトリ設定で有効にする
-2. **GitHub App Token / PAT でのプッシュ** — `GITHUB_TOKEN` では Copilot が発火しない
-
-### 5.3 レビュー対応フロー
+### 5.4 レビュー対応フロー
 
 ```mermaid
 flowchart TD
-    Start([PR 作成 / 修正 push]) --> WaitCI[CI 通過を確認]
-    WaitCI --> WaitReview[Copilot レビュー到着待機]
+    Start([PR 作成]) --> WaitCI[CI 通過を確認]
+    WaitCI --> WaitReview[初回 Copilot レビュー到着待機]
     WaitReview --> Stable[コメント安定化フェーズ]
     Stable --> GetComments[レビューコメント取得]
     GetComments --> Classify{Must/Should 指摘?}
@@ -375,14 +388,16 @@ flowchart TD
     Fix --> LocalCI[ローカル CI 再実行]
     LocalCI --> IDECheck[get_errors ゲート]
     IDECheck --> Reply[コメント返信]
-    Reply --> Push[コミット・プッシュ]
-    Push --> Inc{iteration < 3?}
-    Inc -->|Yes| WaitCI
+    Reply --> Push[コミット・プッシュ<br/>再レビュー依頼なし]
+    Push --> Recheck[残存指摘を再確認]
+    Recheck --> Inc{iteration < 3?}
+    Inc -->|Yes & 未解決あり| Fix
     Inc -->|No| Escalate[人間にエスカレーション]
     Classify -->|なし / approve| Done([ループ終了])
+    Recheck -->|全解決| Done
 ```
 
-### 5.4 指摘の分類
+### 5.5 指摘の分類
 
 | 分類 | 対応 |
 |---|---|
