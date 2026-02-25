@@ -24,10 +24,17 @@ SCAN_DIRS = [
     REPO_ROOT / "src",
     REPO_ROOT / "tests",
     REPO_ROOT / "scripts",
+    REPO_ROOT / ".github",
+    REPO_ROOT / "configs",
+    REPO_ROOT / "ci",
 ]
 
 # スキャン対象の拡張子
-SCAN_EXTENSIONS = {".py", ".ts", ".js", ".go", ".rs", ".toml", ".txt", ".yml", ".yaml"}
+SCAN_EXTENSIONS = {
+    ".py", ".ts", ".js", ".go", ".rs",
+    ".toml", ".txt", ".yml", ".yaml",
+    ".md", ".json", ".sh",
+}
 
 # スキップするディレクトリ名
 SKIP_DIR_NAMES = {
@@ -63,6 +70,10 @@ SECRET_PATTERNS: list[str] = [
     r"-----BEGIN\s+(RSA|DSA|EC|OPENSSH)\s+PRIVATE\s+KEY-----",  # SSH 秘密鍵
     r"ghp_[A-Za-z0-9_]{36,}",  # GitHub Personal Access Token
     r"sk-[A-Za-z0-9]{32,}",  # 汎用 API キー
+    r"sk-ant-api03-[A-Za-z0-9\-_]{20,}",  # Anthropic API キー新形式
+    r"sk-proj-[A-Za-z0-9]{20,}",  # OpenAI API キー新形式
+    r"Bearer\s+[A-Za-z0-9\-._~+/]{20,}=*",  # Bearer トークン（最小20文字で誤検知低減）
+    r"password\s*=\s*[\"'][^\"\']+[\"']",  # パスワードハードコード
 ]
 
 # URL パターン（コード中の外部 URL 直書きを検出）
