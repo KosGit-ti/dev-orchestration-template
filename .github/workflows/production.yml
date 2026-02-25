@@ -97,17 +97,39 @@ jobs:
     needs: integration-test
     timeout-minutes: 10
 
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Record production promotion
+      - name: Record production promotion (GitHub Release)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== Production Promotion Record ==="
-          echo "Commit: ${{ github.sha }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "=================================="
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          TAG_NAME="production-$(date -u +%Y%m%d-%H%M%S)"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
+          # リリースノートをファイルに書き出す（P-020 監査ログ準拠）
+          cat > /tmp/release_notes.md <<EOF
+          ## 本番昇格記録
+
+          | 項目 | 値 |
+          |---|---|
+          | コミット SHA | \`${{ github.sha }}\` |
+          | ブランチ | ${{ github.ref_name }} |
+          | 実行者 | ${{ github.actor }} |
+          | タイムスタンプ | ${TIMESTAMP} |
+          | ワークフロー実行 | [Run #${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) |
+          EOF
+
+          gh release create "$TAG_NAME" \
+            --title "本番昇格: ${SHORT_SHA} (${TIMESTAMP})" \
+            --notes-file /tmp/release_notes.md \
+            --target "${{ github.sha }}"
+
+          echo "✅ GitHub Release 作成完了: $TAG_NAME"
 
   # =====================================================================
   # SBOM 生成（CycloneDX）

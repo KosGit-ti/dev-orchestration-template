@@ -5,7 +5,7 @@ tools:
   - read
   - runInTerminal
   - search
-model: Claude Opus 4.6 (copilot)
+model: "Claude Opus 4.6 (copilot)"
 ---
 
 # Release Manager（リリース判定エージェント）

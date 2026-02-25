@@ -16,7 +16,7 @@ agents:
   - auditor-spec
   - auditor-security
   - auditor-reliability
-model: Claude Opus 4.6 (copilot)
+model: "Claude Opus 4.6 (copilot)"
 user-invokable: true
 handoffs:
   - label: リリース判定へ進む

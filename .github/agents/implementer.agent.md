@@ -7,7 +7,7 @@ tools:
   - runInTerminal
   - search
   - mcp
-model: Claude Opus 4.6 (copilot)
+model: "Claude Sonnet 4.6 (copilot)"
 ---
 
 # Implementer（実装担当エージェント）
