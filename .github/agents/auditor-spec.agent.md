@@ -4,7 +4,7 @@ description: 仕様監査担当。変更が requirements/policies/constraints/pl
 tools:
   - read
   - search
-model: Claude Opus 4.6 (copilot)
+model: "Claude Sonnet 4.6 (copilot)"
 ---
 
 # Auditor Spec（仕様監査エージェント）
