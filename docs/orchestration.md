@@ -389,7 +389,7 @@ flowchart TD
     LocalCI --> IDECheck[get_errors ゲート]
     IDECheck --> Reply[コメント返信]
     Reply --> Push[コミット・プッシュ<br/>再レビュー依頼なし]
-    Push --> Recheck[残存指摘を再確認]
+    Push --> Recheck[初回レビューの<br/>未対応指摘を確認]
     Recheck --> Inc{iteration < 3?}
     Inc -->|Yes & 未解決あり| Fix
     Inc -->|No| Escalate[人間にエスカレーション]
