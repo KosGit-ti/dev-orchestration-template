@@ -1,4 +1,3 @@
-````markdown
 # 運用手順（Runbook）
 
 ## 目的
@@ -125,10 +124,12 @@ git push origin main
 ```
 
 **禁止事項**:
+
 - `main` / `master` ブランチへの `git push --force` は禁止する（ブランチ保護ルール）。
 - 直接コミットの修正ではなく、必ず revert コミットで対応する。
 
 **手順**:
+
 1. 問題のある PR のマージコミット SHA を特定する
 2. `git revert -m 1 <SHA>` で revert コミットを作成する
 3. CI が通ることを確認し、プッシュする
@@ -139,6 +140,7 @@ git push origin main
 GitHub Releases を用いて前バージョンを特定し、ロールバックする。
 
 **前バージョンの特定**:
+
 ```bash
 # GitHub Releases の一覧を確認（最新5件）
 gh release list --limit 5
@@ -148,17 +150,24 @@ gh release view <タグ名>
 ```
 
 **ロールバック手順**:
+
 1. `gh release list` で前回の安定リリースのタグを特定する
 2. 対象タグのコミット SHA を確認する: `git log --oneline <タグ名>`
 3. production ブランチを安定コミットに巻き戻す:
+
    ```bash
    git checkout production
-   git revert --no-commit HEAD..<安定コミットSHA>
+   # 安定コミット以降のコミットを確認
+   git log --oneline <安定コミットSHA>..HEAD
+   # ロールバック対象のコミット SHA を新しい順に列挙して revert
+   git revert --no-commit <コミット1のSHA> <コミット2のSHA> ... <コミットNのSHA>
    git commit -m "fix: <タグ名> へのロールバック"
    git push origin production
    ```
+
 4. CI / 品質ゲートの通過を確認する
 5. ロールバック完了後、GitHub Release に状況を記録する:
+
    ```bash
    gh release create "rollback-$(date -u +%Y%m%d-%H%M%S)" \
      --title "ロールバック: <理由の要約>" \
@@ -170,6 +179,7 @@ gh release view <タグ名>
 P-001〜P-003 違反が発覚した場合の即時対応手順。
 
 **即時停止条件**（copilot-instructions.md 参照）:
+
 - ポリシー違反（P-001〜P-003）の検出
 - 秘密情報の漏洩（P-002）
 - 制約の回避・無効化（P-003）
@@ -185,14 +195,15 @@ P-001〜P-003 違反が発覚した場合の即時対応手順。
    - 漏洩したキー/トークンを即座に無効化（ローテーション）する
    - `git filter-repo` 等で履歴からも除去する（ADR に記録必須）
 4. **違反コミットの revert**:
+
    ```bash
    git revert <違反コミットSHA>
    python ci/policy_check.py  # ポリシーチェックで解消を確認
    ```
+
 5. **エスカレーション**:
    - 重大な違反（秘密情報漏洩、外部への影響）はリポジトリオーナーに即時報告する
    - ADR を作成し、原因・対応・再発防止策を記録する（P-900 例外運用に準拠）
 6. **再発防止**:
    - `ci/policy_check.py` のパターンに検出漏れがあれば追加する
    - ブランチ保護ルールの見直しを行う
-````
