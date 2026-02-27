@@ -23,7 +23,7 @@ count=0
 find "$SRC_DIR" -type d | while read -r dir; do
     init_file="$dir/__init__.py"
     if [ ! -f "$init_file" ]; then
-        touch "$init_file"
+        echo '__all__: list[str] = []' > "$init_file"
         echo "Created: ${init_file#$REPO_ROOT/}"
         ((count++)) || true
     fi

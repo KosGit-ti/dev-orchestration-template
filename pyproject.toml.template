@@ -32,6 +32,7 @@ testing = [
     "pytest>=8.0",
     "hypothesis>=6.0",
     "pytest-cov>=4.0",
+    "mutmut>=2.5.0",
 ]
 
 [build-system]
@@ -75,3 +76,7 @@ mypy_path = "{{SRC_DIR}}"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mutmut]
+paths_to_mutate = "src/"
+tests_dir = "tests/"

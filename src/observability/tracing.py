@@ -20,7 +20,7 @@ https://opentelemetry.io/docs/specs/semconv/gen-ai/
 import functools
 import logging
 from collections.abc import Callable
-from typing import Any, ParamSpec, TypeVar
+from typing import ParamSpec, TypeVar
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def init_tracer(
     logger.info("TracerProvider 初期化完了: service=%s", service_name)
 
 
-def get_tracer() -> Any:
+def get_tracer() -> "trace.Tracer | None":
     """トレーサーのインスタンスを取得する。
 
     OTel SDK 未導入時は ``None`` を返す。
@@ -284,7 +284,8 @@ def trace_llm_call(
                     span.set_attribute("gen_ai.response.finish_reason", "stop")
                     return result
                 except Exception as exc:
-                    span.set_attribute("gen_ai.response.finish_reason", "error")
+                    span.set_attribute(
+                        "gen_ai.response.finish_reason", "error")
                     span.record_exception(exc)
                     raise
 
