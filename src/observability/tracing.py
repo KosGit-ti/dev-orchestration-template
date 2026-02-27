@@ -284,8 +284,7 @@ def trace_llm_call(
                     span.set_attribute("gen_ai.response.finish_reason", "stop")
                     return result
                 except Exception as exc:
-                    span.set_attribute(
-                        "gen_ai.response.finish_reason", "error")
+                    span.set_attribute("gen_ai.response.finish_reason", "error")
                     span.record_exception(exc)
                     raise
 

@@ -78,5 +78,5 @@ mypy_path = "{{SRC_DIR}}"
 testpaths = ["tests"]
 
 [tool.mutmut]
-paths_to_mutate = "src/"
+paths_to_mutate = "{{SRC_DIR}}/"
 tests_dir = "tests/"
