@@ -167,7 +167,8 @@ def call_claude(prompt: str) -> str:
 可能性がある。
 
 最新仕様は以下を定期的に確認し、属性名の変更に追従すること:
-- https://opentelemetry.io/docs/specs/semconv/gen-ai/
+
+- <https://opentelemetry.io/docs/specs/semconv/gen-ai/>
 
 ---
 
@@ -198,6 +199,118 @@ else:
 ```
 
 正常に動作すると、コンソールに JSON 形式のスパン情報が出力される。
+
+---
+
+## エージェントパイプラインの計装
+
+> 本セクションはパイプライン層（Orchestrator が管理する Step 1〜11、`orchestration.md` §3 準拠）の OTel スパン設計を定義する。
+> 現時点では **設計のみ** であり、実装は将来課題とする。
+
+### 計測対象
+
+エージェントパイプラインで計測すべき項目は以下の通り:
+
+| 分類 | 計測対象 | 目的 |
+|---|---|---|
+| パフォーマンス | 各ステップ（Step 1〜11）の実行時間 | ボトルネック特定、SLA 設定 |
+| 信頼性 | サブエージェントへの委譲回数・成功率 | エージェントの安定性評価 |
+| 効率性 | 修正ループ回数の分布 | プロセス改善指標 |
+| CI 品質 | CI 実行時間・失敗率 | CI パイプラインの健全性監視 |
+
+### スパン階層設計
+
+`orchestration.md` §3 のパイプラインフローに対応するスパン階層を以下のように設計する。
+各スパンは `trace_agent_operation` デコレータ（[tracing.py](../src/observability/tracing.py)）と
+同一のセマンティクスで生成される。
+
+```text
+pipeline (root span)
+├── plan_selection           ... Step 1: 計画読込
+├── branch_creation          ... Step 2: ブランチ作成
+├── implementation           ... Step 3: 実装委譲
+│   └── implementer_call     ... implementer サブエージェント呼び出し
+├── testing                  ... Step 3 (cont.): テスト委譲
+│   └── test_engineer_call   ... test-engineer サブエージェント呼び出し
+├── semantic_analysis        ... Step 3.5: セマンティック影響分析（条件付き）
+├── local_ci                 ... Step 4: ローカル CI
+│   ├── ruff_check           ... ruff check 実行
+│   ├── mypy                 ... mypy 型チェック実行
+│   └── pytest               ... pytest 実行
+├── ide_error_gate           ... Step 4.5: IDE エラーゲート
+├── audit                    ... Step 5: 監査委譲
+│   ├── audit_spec           ... auditor-spec サブエージェント呼び出し
+│   ├── audit_security       ... auditor-security サブエージェント呼び出し
+│   └── audit_reliability    ... auditor-reliability サブエージェント呼び出し
+├── fix_loop                 ... Step 6: 修正ループ（0〜3回）
+│   └── fix_iteration        ... 各修正イテレーション
+├── pr_creation              ... Step 7: コミット・PR 作成
+├── pr_ci                    ... Step 8: PR CI 検証
+├── review_loop              ... Step 9: Copilot レビュー対応
+│   └── review_iteration     ... 各レビューイテレーション
+├── release_judgment         ... Step 10: リリース判定
+└── human_approval           ... Step 11: 人間承認待ち
+```
+
+### 属性（Attributes）定義
+
+OpenTelemetry GenAI Semantic Conventions に準拠しつつ、パイプライン固有の属性を追加定義する。
+
+#### パイプライン共通属性（root span に設定）
+
+| 属性名 | 型 | 説明 | 例 |
+|---|---|---|---|
+| `pipeline.task_id` | string | 対象タスクの ID | `"TASK-001"` |
+| `pipeline.branch` | string | フィーチャーブランチ名 | `"feat/TASK-001-add-feature"` |
+| `pipeline.mode` | string | 動作モード | `"auto"` / `"general"` / `"plan_revision"` |
+
+#### ループ関連属性（fix_loop / review_loop に設定）
+
+| 属性名 | 型 | 説明 | 例 |
+|---|---|---|---|
+| `pipeline.loop_count` | number | 現在のループ回数 | `2` |
+| `pipeline.loop_max` | number | 最大ループ回数 | `3` |
+| `pipeline.loop_type` | string | ループ種別 | `"ci_fix"` / `"audit_fix"` / `"review_fix"` |
+
+#### エージェント呼び出し属性（各サブエージェントスパンに設定）
+
+| 属性名 | 型 | 説明 | 例 |
+|---|---|---|---|
+| `agent.name` | string | エージェント名 | `"implementer"` |
+| `agent.model` | string | 使用モデル名 | `"claude-sonnet-4.6"` |
+| `agent.token_usage.input` | number | 入力トークン数 | `15000` |
+| `agent.token_usage.output` | number | 出力トークン数 | `3000` |
+| `agent.status` | string | 実行結果 | `"success"` / `"failure"` / `"partial"` |
+
+#### CI 実行属性（local_ci / pr_ci に設定）
+
+| 属性名 | 型 | 説明 | 例 |
+|---|---|---|---|
+| `ci.tool` | string | CI ツール名 | `"ruff"` / `"mypy"` / `"pytest"` |
+| `ci.exit_code` | number | 終了コード | `0` |
+| `ci.error_count` | number | エラー件数 | `3` |
+
+### tracing.py との関係
+
+パイプライン層のスパンは、既存の `tracing.py` デコレータを **そのまま適用** する方針とする:
+
+| デコレータ | パイプラインでの用途 |
+|---|---|
+| `@trace_agent_operation` | `pipeline`, `implementation`, `audit` 等の高レベルスパン |
+| `@trace_tool_execution` | `ruff_check`, `mypy`, `pytest` 等のツール実行スパン |
+| `@trace_llm_call` | サブエージェント内の LLM 呼び出し（将来の API 直接呼び出し時） |
+
+パイプラインのプログラマティックな計装は、Copilot Chat ベースの現行アーキテクチャでは
+直接適用できない。将来的にエージェントフレームワーク（A2A 等）に移行した際に、
+上記設計に基づいて実装する。
+
+### 実装ロードマップ
+
+| Phase | 状態 | 内容 |
+|---|---|---|
+| Phase 1（現在） | ✅ 完了 | 設計ドキュメントの整備（本セクション） |
+| Phase 2 | 未着手 | エージェントフレームワーク移行時に計装コードを実装 |
+| Phase 3 | 未着手 | ダッシュボード構築（Jaeger / Grafana Tempo 等で可視化） |
 
 ### CI での確認
 

@@ -83,6 +83,7 @@
 - ポリシー違反（P-001〜P-003）の検出
 - 修正ループが3回を超えた場合
 - plan.md の Next が空の場合
+- 予算超過（推定トークン消費が Budget cap を超過した場合。詳細は `docs/orchestration.md` §10 参照）
 
 ## Plan Revision（計画修正モード）
 
