@@ -67,8 +67,15 @@ def load_config(path: Path | None = None) -> PipelineConfig:
     except tomllib.TOMLDecodeError as e:
         msg = f"TOML パースエラー: {e}"
         raise ConfigError(msg) from e
+    except OSError as e:
+        msg = f"設定ファイルを読み込めませんでした: {e}"
+        raise ConfigError(msg) from e
 
     pipeline_section = data.get("pipeline", {})
+
+    if not isinstance(pipeline_section, dict):
+        msg = "pipeline セクションはテーブルでなければならない"
+        raise ConfigError(msg)
 
     try:
         return PipelineConfig(

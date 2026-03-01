@@ -180,3 +180,26 @@ class TestPipeline:
 
         assert output1.result == output2.result
         assert output1.status == output2.status
+
+    def test_negative_values_accepted(self) -> None:
+        """負の値を含む入力は正常処理される（M-001 修正）。"""
+        config = PipelineConfig()
+        pipeline = Pipeline(config)
+        inp = PipelineInput(name="neg", values=(-5.0, 10.0))
+        output = pipeline.run(inp)
+
+        assert output.status == Status.SUCCESS
+        assert output.result.total == pytest.approx(5.0)
+        assert output.result.count == 2
+        assert output.result.average == pytest.approx(2.5)
+
+    def test_all_negative_values(self) -> None:
+        """全て負の入力でも正常処理される。"""
+        config = PipelineConfig()
+        pipeline = Pipeline(config)
+        inp = PipelineInput(name="all_neg", values=(-10.0, -20.0))
+        output = pipeline.run(inp)
+
+        assert output.status == Status.SUCCESS
+        assert output.result.total == pytest.approx(-30.0)
+        assert output.result.average == pytest.approx(-15.0)

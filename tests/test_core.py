@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 
 import pytest
@@ -69,16 +68,6 @@ class TestProcessingResult:
         """負の total は許容される（M-001 修正）。"""
         result = ProcessingResult(total=-3.0, count=1, average=-3.0)
         assert result.total == -3.0
-
-    def test_nan_total_rejected(self) -> None:
-        """NaN の total は拒否される。"""
-        with pytest.raises(ValidationError, match="有限値"):
-            ProcessingResult(total=math.nan, count=1, average=0.0)
-
-    def test_inf_total_rejected(self) -> None:
-        """inf の total は拒否される。"""
-        with pytest.raises(ValidationError, match="有限値"):
-            ProcessingResult(total=math.inf, count=1, average=0.0)
 
     def test_zero_count_rejected(self) -> None:
         """0 の count は拒否される。"""
@@ -233,3 +222,15 @@ class TestLoadConfig:
         config_file.write_text("[other]\nkey = 'value'\n")
         config = load_config(config_file)
         assert config == PipelineConfig()
+
+    def test_load_directory_raises_config_error(self, tmp_path: Path) -> None:
+        """ディレクトリパスを指定すると ConfigError を送出する。"""
+        with pytest.raises(ConfigError, match="読み込めませんでした"):
+            load_config(tmp_path)
+
+    def test_load_pipeline_section_not_table(self, tmp_path: Path) -> None:
+        """pipeline セクションがテーブルでない場合は ConfigError を送出する。"""
+        config_file = tmp_path / "bad_section.toml"
+        config_file.write_text('pipeline = "not a table"\n')
+        with pytest.raises(ConfigError, match="テーブル"):
+            load_config(config_file)

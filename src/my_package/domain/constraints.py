@@ -7,6 +7,7 @@ constraints.md で定義された制約を評価する。
 from __future__ import annotations
 
 import logging
+import math
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -72,8 +73,6 @@ def _check_value_range(input_data: PipelineInput) -> None:
     Raises:
         ConstraintViolationError: 値に NaN や無限大が含まれている場合。
     """
-    import math
-
     for i, v in enumerate(input_data.values):
         if math.isnan(v) or math.isinf(v):
             raise ConstraintViolationError(
