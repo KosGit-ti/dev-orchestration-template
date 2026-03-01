@@ -32,29 +32,27 @@
 
 ## Next（自動実行対象：最大3件）
 
-### N-002 MVP パイプラインの確立
-
-- Issue: #29
-- 目的：最小限の機能が一本で動作する状態を作る
-- [ ] パッケージ構造（`src/my_package/core/`, `src/my_package/domain/`）を配置する
-- [ ] core 層に型定義（types.py）・例外定義（exceptions.py）・設定管理（config.py）を実装する
-- [ ] domain 層に MVP パイプライン（入力→処理→出力）を実装する
-- [ ] 制約評価のスケルトンを実装する
-- [ ] エントリポイント `scripts/run_pipeline.py` を作成する
-- [ ] テストを追加する（core / pipeline / 制約の境界値）
-- [ ] architecture.md のデータフロー図を更新する
-- 依存：N-001（完了済み）
-- 触る領域：src/my_package/, scripts/, tests/, docs/
-
 ### N-003 品質フレームワークの整備
 
 - 目的：制約・品質の基盤を作る
 - 受入条件：
   - <!-- プロジェクト固有の受入条件を記載 -->
-- 依存：N-002
+- 依存：N-002（完了済み）
 - 触る領域：<!-- 対象モジュールを記載 -->
 
 ## Done（今期完了）
+
+### N-002 MVP パイプラインの確立 ✅
+
+- Issue: #29
+- 完了日: 2026-03-01
+- 完了: パッケージ構造配置（core/, domain/）
+- 完了: 型定義（types.py）・例外定義（exceptions.py）・設定管理（config.py）
+- 完了: MVP パイプライン（入力→制約→処理→出力）
+- 完了: 制約評価（C-001 max_values, C-002 NaN/inf）
+- 完了: CLI スクリプト・TOML 設定ファイル
+- 完了: architecture.md 更新
+- PR: #30（マージ済み）、62 tests pass
 
 ### N-001 リポジトリ基盤と CI 品質ゲートの確立 ✅
 
@@ -80,5 +78,6 @@ GitHub Project: <!-- URL を記載 -->
 
 ## 直近の変更履歴（最大10件）
 
+- 2026-03-01: N-002 完了（PR #30 マージ、Issue #29 Close）→ Done に移動、N-003 を Next に昇格
 - 2025-07-14: N-001 を Done に移動、N-002 の受入条件を具体化、Issue #29 を対応表に追加
 - 2025-07-10: N-001 Issue #26 対応表追加
