@@ -77,17 +77,17 @@ jobs:
       - name: Policy check
         run: python ci/policy_check.py
 
-      # - name: Lint
-      #   run: {{RUN_PREFIX}} {{LINTER}}
+      - name: Lint (ruff check)
+        run: uv run ruff check .
 
-      # - name: Format check
-      #   run: {{RUN_PREFIX}} {{FORMATTER}}
+      - name: Format check (ruff format)
+        run: uv run ruff format --check .
 
-      # - name: Type check
-      #   run: {{RUN_PREFIX}} {{TYPE_CHECKER}}
+      - name: Type check (mypy)
+        run: uv run mypy src/ tests/ ci/
 
-      # - name: Test
-      #   run: {{RUN_PREFIX}} {{TEST_RUNNER}}
+      - name: Test (pytest)
+        run: uv run pytest -q --tb=short
 
       # ---------------------------------------------------------------
       # ミューテーションテスト（非ブロッキング）

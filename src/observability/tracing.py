@@ -52,7 +52,10 @@ try:
     from opentelemetry import trace  # type: ignore[import-not-found]
     from opentelemetry.sdk.resources import Resource  # type: ignore[import-not-found]
     from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-not-found]
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter  # type: ignore[import-not-found]
+    from opentelemetry.sdk.trace.export import (  # type: ignore[import-not-found]
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
 
     _HAS_OTEL = True
 except ImportError:

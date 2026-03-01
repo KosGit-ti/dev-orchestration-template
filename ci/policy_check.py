@@ -31,9 +31,18 @@ SCAN_DIRS = [
 
 # スキャン対象の拡張子
 SCAN_EXTENSIONS = {
-    ".py", ".ts", ".js", ".go", ".rs",
-    ".toml", ".txt", ".yml", ".yaml",
-    ".md", ".json", ".sh",
+    ".py",
+    ".ts",
+    ".js",
+    ".go",
+    ".rs",
+    ".toml",
+    ".txt",
+    ".yml",
+    ".yaml",
+    ".md",
+    ".json",
+    ".sh",
 }
 
 # スキップするディレクトリ名
