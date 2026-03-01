@@ -499,13 +499,13 @@ flowchart TD
     Stable --> GetComments[レビューコメント取得]
     GetComments --> Classify{Must/Should 指摘?}
     Classify -->|あり| Fix[implementer に修正委譲]
-    Fix --> LocalCI[ローカル CI 再実行]
-    LocalCI --> IDECheck[get_errors ゲート]
-    IDECheck --> Reply[コメント返信]
-    Reply --> Commit[コミット]
+    Fix --> Reply[コメント返信<br/>※コード変更なし]
+    Reply --> FinalCI[ローカル CI 再実行<br/>コミット直前ゲート]
+    FinalCI --> IDECheck{get_errors<br/>エラーゼロ?}
+    IDECheck -->|エラーあり| Fix
+    IDECheck -->|エラーゼロ| Commit[コミット<br/>⚠️ CI後コード変更禁止]
     Commit --> CleanCheck{git status --porcelain<br/>出力が空?}
-    CleanCheck -->|No| AddCommit[追加コミット<br/>フォーマッタ残差分]
-    AddCommit --> Commit
+    CleanCheck -->|No| FinalCI
     CleanCheck -->|Yes| Push[プッシュ<br/>再レビュー依頼なし]
     Push --> Recheck[初回レビューの<br/>未対応指摘を確認]
     Recheck --> Inc{iteration < 3?}
