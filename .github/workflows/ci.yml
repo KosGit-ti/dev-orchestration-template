@@ -107,9 +107,11 @@ jobs:
       - name: Audit dependencies (pip-audit)
         if: hashFiles('pyproject.toml') != ''
         # 前提: 上記の uv sync による依存インストールが実行済みであること
+        # ローカルパッケージ（editable install）は PyPI に存在しないため除外する
         run: |
           uv pip install pip-audit --system
-          pip-audit -r <(uv pip freeze) --strict --progress-spinner=off
+          uv pip freeze | grep -v '^\-e' | grep -vi 'dev-orchestration-template' > /tmp/requirements-frozen.txt
+          pip-audit -r /tmp/requirements-frozen.txt --strict --progress-spinner=off
 
       # ---------------------------------------------------------------
       # OpenTelemetry 計装確認（observability オプション有効時）
