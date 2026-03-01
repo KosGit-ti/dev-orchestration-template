@@ -139,9 +139,7 @@ class TestProcessPreconditions:
         multiplier=st.floats(max_value=0.0, allow_nan=False, allow_infinity=False),
     )
     @settings(max_examples=100)
-    def test_non_positive_multiplier_rejected(
-        self, value: float, multiplier: float
-    ) -> None:
+    def test_non_positive_multiplier_rejected(self, value: float, multiplier: float) -> None:
         """multiplier <= 0.0 のとき事前条件違反でアサーションエラーとなること。"""
         entity = ExampleEntity(name="test", value=value)
         with pytest.raises(AssertionError, match="multiplier must be > 0.0"):
