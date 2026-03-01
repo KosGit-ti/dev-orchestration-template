@@ -280,6 +280,7 @@ Orchestrator はサブエージェント呼び出しを1つずつ待機するの
 #### Step 7: コミット・プッシュ・PR 作成
 
 - Conventional Commit フォーマットでコミット
+- **コミット後クリーン検証**（必須）: `git status --porcelain` で出力が空であることを確認する。未コミットの差分が残っている場合は追加コミットする。これは「`ruff format` 等のフォーマッタが `replace_string_in_file` 後に追加のスタイル変更を生成し、コミット漏れが発生する」ケースを防ぐゲートである
 - PR 本文は `--body-file` で一時ファイル経由（`--body` は禁止）
 - PR 本文に `Closes #XX` を記載
 
@@ -501,7 +502,11 @@ flowchart TD
     Fix --> LocalCI[ローカル CI 再実行]
     LocalCI --> IDECheck[get_errors ゲート]
     IDECheck --> Reply[コメント返信]
-    Reply --> Push[コミット・プッシュ<br/>再レビュー依頼なし]
+    Reply --> Commit[コミット]
+    Commit --> CleanCheck{git status --porcelain<br/>出力が空?}
+    CleanCheck -->|No| AddCommit[追加コミット<br/>フォーマッタ残差分]
+    AddCommit --> Commit
+    CleanCheck -->|Yes| Push[プッシュ<br/>再レビュー依頼なし]
     Push --> Recheck[初回レビューの<br/>未対応指摘を確認]
     Recheck --> Inc{iteration < 3?}
     Inc -->|Yes & 未解決あり| Fix
