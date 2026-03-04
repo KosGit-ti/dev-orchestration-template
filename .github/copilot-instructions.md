@@ -62,9 +62,9 @@
    - PR 本文に `Closes #XX` を必ず記載する（plan.md の Issue 対応表を参照）
    - **コミット後クリーン検証**（必須）: コミット後に `git status --porcelain` で出力が空であることを確認する。未コミットの差分が残っている場合は追加コミットしてからプッシュする
 9. PR の CI を監視する（失敗時は修正→再プッシュ、最大3回）
-   - `gh pr checks <PR_NUMBER>` で全チェックの状態を確認する
-   - 失敗した場合：原因を特定し、修正→再プッシュを最大3回試みる
-   - **pending のままタイムアウト・無応答の場合**：`gh pr view <PR_NUMBER> --json mergeable,mergeStateStatus` で PR 状態を診断し、コンフリクト（`DIRTY`/`CONFLICTING`）やブランチ遅延（`BEHIND`）を解消してから CI 監視に戻る
+   - 60秒間隔で `gh pr checks <PR_NUMBER>` を最大20回（最大20分）実行し、全チェックが `success` になるまで待機する
+   - `failure` / `cancelled` のチェックが出た場合：原因を特定し、修正→再プッシュを最大3回試みる
+   - **20回実行しても一部が `pending` のままの場合**：`gh pr view <PR_NUMBER> --json mergeable,mergeStateStatus` で PR 状態を診断し、コンフリクト（`DIRTY`/`CONFLICTING`）やブランチ遅延（`BEHIND`）を解消してから CI 監視に戻る
    - 3回試行しても解決しない場合は状況を人間に報告して停止する（詳細は `agents/orchestrator.agent.md` の「PR 状態診断フロー」参照）
 10. Copilot コードレビュー対応（初回レビューのみ、最大3回の指摘対応）
     - **レビュー到着待機**: PR 作成後、Copilot レビューが到着するまで最大20分（60秒間隔×最大20回）ポーリングする
