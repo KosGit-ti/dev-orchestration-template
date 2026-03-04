@@ -7,6 +7,7 @@
   "github.copilot.chat.responsesApiReasoningEffort": "high",
 
   // ===== Python 固定設定 =====
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
   "python.analysis.typeCheckingMode": "strict",
   "python.testing.pytestEnabled": true,
   "python.testing.pytestArgs": ["tests"],
@@ -15,5 +16,12 @@
   "editor.formatOnSave": true,
   "editor.rulers": [100],
   "files.trimTrailingWhitespace": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:pyenv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
 }
