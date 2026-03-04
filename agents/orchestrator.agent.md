@@ -113,7 +113,7 @@ GitHub Copilot Code Review の再レビュー依頼は API 経由では技術的
 2. 初回 Copilot レビューの到着を待機する
    - レビューカウントをポーリングで監視する（後述）
    - レビュー検出後、コメント安定化フェーズを実行する（後述）
-   - タイムアウト（10分）した場合はスキップして次へ進む
+   - タイムアウト（20分）した場合はスキップして次へ進む
 
 3. レビューコメントを取得する
    - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
@@ -172,14 +172,14 @@ PR 作成直後の Copilot レビュー到着を待機する手順。
 ```bash
 # (a) 現在のレビュー数を記録する
 BEFORE_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
-  --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
+  --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
 
-# (b) 新しいレビューが届くまでポーリングする（30秒間隔 × 最大20回 = 最大10分）
+# (b) 新しいレビューが届くまでポーリングする（60秒間隔 × 最大20回 = 最大20分）
 REVIEW_RECEIVED=false
 for i in $(seq 1 20); do
-  sleep 30
+  sleep 60
   CURRENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
-    --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
+    --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
   echo "レビュー待機中... ($i/20, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
   if [ "$CURRENT_COUNT" -gt "$BEFORE_COUNT" ]; then
     REVIEW_RECEIVED=true
@@ -196,7 +196,7 @@ if [ "$REVIEW_RECEIVED" = "true" ]; then
   for i in $(seq 1 8); do
     sleep 15
     CURRENT_COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/comments" \
-      --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer")] | length')
+      --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
     echo "コメント安定化待機... ($i/8, コメント数: $CURRENT_COMMENT_COUNT)"
     if [ "$CURRENT_COMMENT_COUNT" = "$LAST_COMMENT_COUNT" ] && [ "$CURRENT_COMMENT_COUNT" -gt "0" ]; then
       STABLE_CHECKS=$((STABLE_CHECKS + 1))
@@ -213,7 +213,7 @@ fi
 
 # (d) タイムアウト判定
 if [ "$REVIEW_RECEIVED" = "false" ]; then
-  echo "⚠️ Copilot レビューが 10 分以内に届きませんでした"
+  echo "⚠️ Copilot レビューが 20 分以内に届きませんでした"
   echo "Copilot Code Review がリポジトリで有効化されているか確認してください"
   # タイムアウト時はスキップして次へ進む（再レビューは求めない設計のため）
 fi
