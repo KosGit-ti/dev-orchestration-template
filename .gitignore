@@ -26,6 +26,8 @@ htmlcov/
 .coverage
 .coverage.*
 coverage.xml
+.venv/
+venv/
 
 # pyproject.toml.template は bootstrap.sh のテンプレートとして保持する。
 # pyproject.toml 自体はリポジトリ CI で必要なためコミット対象とする。
