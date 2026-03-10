@@ -70,5 +70,12 @@
   "containerEnv": {
     "PYTHONDONTWRITEBYTECODE": "1",
     "PYTHONUNBUFFERED": "1"
-  }
+  },
+
+  // ===== マウント設定 =====
+  // .venv をホスト OS と分離するための anonymous volume。
+  // Windows ホスト上の .venv（Windows バイナリ）がコンテナに混入するのを防ぐ。
+  "mounts": [
+    "source=dev-orchestration-template-venv,target=${containerWorkspaceFolder}/.venv,type=volume"
+  ]
 }
