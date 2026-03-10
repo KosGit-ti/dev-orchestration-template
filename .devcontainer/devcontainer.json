@@ -45,8 +45,8 @@
 
       // ===== VS Code 設定（クロスプラットフォーム） =====
       "settings": {
-        // Python 環境（Codespaces / Linux 用パス）
-        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        // Python 環境（コンテナ内の固定パス。${workspaceFolder} は settings では展開されないため直接指定）
+        "python.defaultInterpreterPath": "/workspaces/dev-orchestration-template/.venv/bin/python",
 
         // Copilot Agent Orchestration
         "chat.customAgentInSubagent.enabled": true,
