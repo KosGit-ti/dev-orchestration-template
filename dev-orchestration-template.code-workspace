@@ -1,13 +1,12 @@
 {
   "folders": [
     {
-      "path": "."
-    }
+      "path": ".",
+    },
   ],
   "settings": {
-    // python.defaultInterpreterPath はここでは設定しない。
-    // ${workspaceFolder} は settings では展開されないため、Python 拡張機能の自動検出に任せる。
-    // インタープリターは「Python: Select Interpreter」コマンドで手動選択すること。
+    // Python 環境（ローカル Windows 用。相対パスは workspace root から解決される）
+    "python.defaultInterpreterPath": ".venv/Scripts/python",
 
     // Copilot Agent Orchestration
     "chat.customAgentInSubagent.enabled": true,
@@ -22,7 +21,7 @@
     "editor.formatOnSave": true,
     "editor.rulers": [100],
     "files.trimTrailingWhitespace": true,
-    "files.insertFinalNewline": true
+    "files.insertFinalNewline": true,
   },
   "extensions": {
     "recommendations": [
@@ -43,7 +42,7 @@
       "editorconfig.editorconfig",
       "oderwat.indent-rainbow",
       "kevinrose.vsc-python-indent",
-      "mechatroner.rainbow-csv"
-    ]
-  }
+      "mechatroner.rainbow-csv",
+    ],
+  },
 }
