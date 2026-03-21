@@ -176,6 +176,9 @@ PR を作成する際、完了する Issue を PR 本文に明記する：
    d. 変更履歴に修正内容を記録する
 
 4. GitHub Issues を作成する
+   cat > /tmp/issue_body.md << 'ISSUEBODY'
+   <Issue 本文をここに記述>
+   ISSUEBODY
    gh issue create --title "<タスクタイトル>" \
      --body-file /tmp/issue_body.md \
      --label "<ラベル>"
