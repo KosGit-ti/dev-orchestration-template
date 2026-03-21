@@ -22,7 +22,7 @@ project:
   scope_out: | # スコープ外
     - 除外する機能1
     - 除外する機能2
-  owner: "githypn" # GitHub ユーザー名または Org
+  owner: "" # GitHub ユーザー名または Org（空の場合は setup_github.sh が現在のリポジトリから自動検出）
 
 # --- 言語・ツールチェイン ---
 toolchain:

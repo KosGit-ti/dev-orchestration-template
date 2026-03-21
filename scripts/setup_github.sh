@@ -262,6 +262,12 @@ with open('project-config.yml') as f:
         print('')
 ")
 
+    # config の owner が空の場合、現在のリポジトリから自動検出する
+    if [ -z "$OWNER" ]; then
+        OWNER=$(gh repo view --json owner -q .owner.login 2>/dev/null || echo "")
+    fi
+
+    # リポジトリからも取得できない場合、認証ユーザーから取得する
     if [ -z "$OWNER" ]; then
         OWNER=$(gh api user -q .login 2>/dev/null || echo "")
     fi

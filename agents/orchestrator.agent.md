@@ -40,102 +40,76 @@
 8. コミット・プッシュし、PR を作成する
    - PR 本文に `Closes #XX` を必ず記載する（対象 Issue は plan.md の対応表を参照）
    - PR テンプレート（`.github/PULL_REQUEST_TEMPLATE.md`）に従う
-9. PR の CI を監視する（失敗時は修正→再プッシュ、最大3回）
-10. Copilot コードレビュー対応ループ（最大3回）— 詳細は後述
-11. **release_manager** に最終判定を委譲する
-12. 人間の最終承認を得てからマージする
-13. マージ後の Issue / Project 検証（独立監査）
+9. **PR 後の必須フロー**を実行する（`.github/copilot-instructions.md` の「PR 後の必須フロー」セクション参照。省略禁止）
+   - A: CI 待機・対応
+   - B: Copilot レビュー待機・対応
+   - C: 承認待ち報告
+10. **release_manager** に最終判定を委譲する
+11. 承認待ち状態を報告して作業を終了する（マージ判断は人間が行う）
+12. マージ後の Issue / Project 検証（独立監査）
     - `issue-lifecycle` ワークフローが Issue を自動 Close したことを確認する
     - GitHub Projects で対象アイテムが「Done」に移動したことを確認する
     - `plan.md` の Done セクションに完了タスクが記載されていることを確認する
     - 不整合がある場合は手動で `gh issue close` / `gh project item-edit` で修正する
 
-## Step 10: Copilot コードレビュー対応ループ
+## PR 後の必須フロー（Step 9 の詳細）
 
-PR 作成後、CI 通過後に Copilot コードレビューの指摘を自動で取得・対応・返信する。
-最大3回のイテレーションで以下を繰り返す。
+PR 作成後、または既存 PR へのコミット push 後は、`.github/copilot-instructions.md` の
+「PR 後の必須フロー」セクションに **必ず従う**（省略禁止）。
+以下はその要約。
 
-### 手順
+### A. CI 待機・対応
 
-```
-review_iteration = 0
-while review_iteration < 3:
-    1. レビュー完了を待機する
-       - `gh pr checks <PR_NUMBER> --watch` で CI + レビュー status を監視
-       - CI が通過したら次のステップへ進む
+- `gh pr checks <PR番号> --watch` で CI 完了を待機
+- CI 失敗時 → implementer に修正指示 → 再 push → A に戻る（最大3回）
+- CI 成功 → B へ
 
-    2. レビューコメントを取得する
-       - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
-       - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` でインラインコメントを取得
-       - state が CHANGES_REQUESTED または COMMENTED のレビューを対象とする
-       - 自分の返信済みコメントを除外し、未対応コメントのみ抽出する
+### B. Copilot レビュー待機・対応
 
-    3. 指摘を分類する
-       - copilot-code-review-instructions.md の基準に従い Must / Should / Nice に分類
-       - Must: マージ前に修正必須 → 修正対象
-       - Should: 強く推奨 → 修正対象（時間が許せば）
-       - Nice: 改善提案 → 今回はスキップ可
+- Copilot レビュー到着を 60秒間隔×最大20回（20分）ポーリング
+- レビュー到着 → コメント取得 → Must/Should/Nice に分類
+- Must/Should あり → implementer に修正委譲 → コメント返信 → push → **A に戻る**
+- 指摘なし or approve → C へ
 
-    4. Must / Should の指摘がゼロなら → ループ終了
-       - レビューで approve 済み or 指摘なしなら Step 11 へ
+**回数制限**: Copilot レビュー対応に回数制限はない（安全上限: 100回）。
 
-    5. 修正を実施する
-       - 各指摘の対象ファイル・行番号・提案内容を implementer に伝達
-       - implementer が修正を実施
-       - 修正後にローカル CI を再実行（失敗なら修正）
+**重要**: Copilot 再レビューは API から自動依頼できない。push 後にレビューが来なかった場合は
+「Copilot 再レビューは人間が GitHub GUI の Re-request review ボタンから依頼してください」と報告する。
 
-    6. 各レビューコメントに返信する
-       - 修正した指摘：対応内容とコミットハッシュを返信する
-       - Nice でスキップした指摘：スキップ理由を返信する
-       - 返信コマンド（後述）を使用する
+### C. 承認待ち報告
 
-    7. コミット・プッシュする
-       - コミットメッセージ: "fix: Copilot レビュー指摘対応 (iteration N)"
-       - プッシュにより自動で CI + Copilot 再レビューがトリガーされる
-
-    8. review_iteration++
-```
+- 「CI 通過・レビュー対応完了。人間のレビュー・承認を待っています。」と報告する
+- **禁止**: 「マージしていいですか？」等のマージ確認質問
+- 人間から追加指示があれば B に戻る
 
 ### レビューコメント取得コマンド
 
 ```bash
-# PR の全レビューを取得（著者・状態・本文）
+# PR の全レビューを取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
   --jq '.[] | {author: .user.login, state: .state, body: .body}'
 
-# インラインコメント（ファイル・行番号・提案）を取得
+# インラインコメント取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   --jq '.[] | {author: .user.login, path: .path, line: .line, body: .body, id: .id, in_reply_to_id: .in_reply_to_id}'
 
-# 未返信のコメントのみ抽出する（in_reply_to_id がないトップレベルコメント）
+# 未返信のコメントのみ抽出
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   --jq '[.[] | select(.in_reply_to_id == null)] | map({id, author: .user.login, path, line, body})'
 ```
 
 ### レビューコメント返信コマンド
 
-各コメントに対して返信する。返信は元コメントのスレッドに紐づく。
-
 ```bash
-# コメントに返信する（comment_id はインラインコメントの ID）
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
   -f body="対応しました。<修正内容の説明>（<コミットハッシュ>）。"
 ```
 
 ### 返信テンプレート
 
-対応内容に応じて以下のテンプレートを使用する：
-
 - **修正済み**: 「対応しました。<具体的な修正内容>（<コミットハッシュ>）。」
 - **Nice でスキップ**: 「ご指摘ありがとうございます。改善提案として認識しました。今回のスコープ外のため次回以降で検討します。」
 - **対応不要と判断**: 「ご指摘ありがとうございます。<対応不要と判断した技術的理由>。」
-
-### 注意事項
-
-- Copilot レビューが設定されていない場合（レビューが来ない場合）は30秒待機後にスキップする
-- レビュアーが Copilot 以外（人間）の場合は、指摘を表示して人間に判断を委ねる
-- 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
-- 全てのレビューコメントには必ず返信する（未返信のコメントを残さない）
 
 ## 停止条件
 
