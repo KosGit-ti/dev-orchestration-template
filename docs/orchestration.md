@@ -265,6 +265,8 @@ flowchart TD
 #### Step 7: コミット・プッシュ・PR 作成
 
 - Conventional Commit フォーマットでコミット
+- **PR 本文は `--body-file` で一時ファイル経由で渡す**（`--body` は禁止。`\n` がリテラル文字として送信され Markdown が崩壊するため）
+- MCP API で PR を作成・更新する場合も、本文はファイルに書き出してから `gh pr edit --body-file` 等で渡す
 - PR 本文に `Closes #XX` を記載
 
 #### Step 8: PR 後の必須フロー（省略禁止）

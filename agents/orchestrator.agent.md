@@ -38,6 +38,8 @@
    - **auditor_reliability**: 信頼性監査
 7. Must 指摘がゼロになるまで修正ループ（最大3回）
 8. コミット・プッシュし、PR を作成する
+   - **PR 本文は必ず一時ファイルに書き出してから `--body-file` で渡す**（`--body` 禁止。`\n` がリテラル文字として送信され Markdown が崩壊するため）
+   - MCP API で PR を作成・更新する場合も、本文は必ずファイル経由で渡す
    - PR 本文に `Closes #XX` を必ず記載する（対象 Issue は plan.md の対応表を参照）
    - PR テンプレート（`.github/PULL_REQUEST_TEMPLATE.md`）に従う
 9. **PR 後の必須フロー**を実行する（`.github/copilot-instructions.md` の「PR 後の必須フロー」セクション参照。省略禁止）
@@ -175,7 +177,7 @@ PR を作成する際、完了する Issue を PR 本文に明記する：
 
 4. GitHub Issues を作成する
    gh issue create --title "<タスクタイトル>" \
-     --body "<タスク説明（受入条件を含む）>" \
+     --body-file /tmp/issue_body.md \
      --label "<ラベル>"
 
 5. Issues を GitHub Project に追加する

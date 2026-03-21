@@ -108,12 +108,19 @@ handoffs:
     git commit -m "<conventional commit メッセージ>"
     git push -u origin HEAD
     ```
-14. PR を作成する：
+14. PR を作成する（**`--body-file` 必須、`--body` 禁止**）：
     ```bash
+    # PR 本文を一時ファイルに書き出す（改行が正しく保持される）
+    cat > /tmp/pr_body.md << 'PRBODY'
+    <.github/PULL_REQUEST_TEMPLATE.md に従った本文>
+    PRBODY
     gh pr create --title "<タスクID>: <説明>" \
-      --body "<.github/PULL_REQUEST_TEMPLATE.md に従った本文>" \
+      --body-file /tmp/pr_body.md \
       --base main
+    rm -f /tmp/pr_body.md
     ```
+    - **禁止**: `--body` でインライン文字列を渡すこと（`\n` がリテラル文字として送信され Markdown が崩壊する）
+    - **禁止**: MCP API の `body` パラメータに複数行テキストを直接渡すこと（同じ理由）
     - PR 本文には検証手順と結果を含める（AC-040）
     - 関連 Issue 番号を `Closes #XX` で紐付ける
 
