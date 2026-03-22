@@ -1,0 +1,125 @@
+# テンプレートアップデート マニフェスト
+# ─────────────────────────────────────────────────────────────
+# scripts/template_update.py がこのファイルを読み、カテゴリに従い
+# テンプレートの変更を子リポジトリに「選択的に」適用する。
+#
+# カテゴリの優先度: sample_only > never_update > always_update > add_only
+# （具体パスが複数カテゴリにマッチした場合、上記の優先順で決定する）
+#
+# パス末尾に "/" があるとディレクトリ全体にマッチする。
+# ─────────────────────────────────────────────────────────────
+
+version: 1
+
+categories:
+  # ━━━ always_update ━━━
+  # テンプレートのインフラ・エージェント定義。
+  # プロジェクト側は常にテンプレート最新版で上書きする。
+  always_update:
+    # エージェント定義（.github/agents/ = 実動作版）
+    - .github/agents/
+    # 監査・実行プロンプト
+    - .github/prompts/
+    # CI/CD ワークフロー
+    - .github/workflows/
+    # Copilot 全体ルール（モード定義・パイプライン手順）
+    - .github/copilot-instructions.md
+    # Copilot コードレビュー設定
+    - .github/copilot-code-review-instructions.md
+    # PR テンプレート
+    - .github/PULL_REQUEST_TEMPLATE.md
+    # Issue テンプレート
+    - .github/ISSUE_TEMPLATE/
+    # CI ポリシーチェッカー
+    - ci/policy_check.py
+    # ユーティリティスクリプト
+    - scripts/bootstrap.sh
+    - scripts/setup_github.sh
+    - scripts/init_packages.sh
+    - scripts/update_agent_models.sh
+    - scripts/template_update.py
+    # 参考用エージェント定義（agents/ = 閲覧用コピー）
+    - agents/
+    # Dev Container
+    - .devcontainer/
+    # Git 属性
+    - .gitattributes
+    # マニフェスト自体
+    - .template-update.yml
+    # マニュアル（テンプレート共通ドキュメント）
+    - docs/GETTING_STARTED.md
+    - docs/UPGRADE_GUIDE.md
+    - docs/MODE_GUIDE.md
+    # 品質・可観測性ガイド
+    - docs/quality-guide.md
+    - docs/observability-guide.md
+    - docs/security-policy-template.md
+    - docs/mobile-workflow.md
+    # A2A 設計ドキュメント
+    - docs/a2a-design/
+    # Serena MCP 設定
+    - .serena/
+
+  # ━━━ never_update ━━━
+  # プロジェクト固有コンテンツ。テンプレート側の変更を適用しない。
+  never_update:
+    # プロジェクト固有の正本ドキュメント
+    - docs/plan.md
+    - docs/requirements.md
+    - docs/architecture.md
+    - docs/runbook.md
+    - docs/constraints.md
+    - docs/policies.md
+    - docs/orchestration.md
+    # ADR（テンプレートは除く）
+    - docs/adr/
+    # プロジェクト固有の instructions
+    - .github/instructions/
+    # プロジェクト固有設定
+    - README.md
+    - project-config.yml
+    - LICENSE
+    - pyproject.toml
+    # プロジェクト固有の .gitignore（追記あり得る）
+    - .gitignore
+    # プロジェクト固有のソースコード
+    - src/
+    # プロジェクト固有のテスト
+    - tests/
+    # プロジェクト固有のデータ
+    - data/
+    - notebooks/
+
+  # ━━━ add_only ━━━
+  # テンプレートに追加された新規ファイルのみコピー。
+  # プロジェクト側に既存のファイルは上書きしない。
+  add_only:
+    # VS Code 設定（プロジェクト側で変更している場合を保護）
+    - .vscode/
+    # 設定ファイル
+    - configs/
+    # ADR テンプレート（新規テンプレートのみ追加）
+    - docs/adr/ADR-TEMPLATE.md
+
+  # ━━━ sample_only ━━━
+  # テンプレートのサンプル・雛形コード。
+  # 既存プロジェクトには一切コピーしない（参考として README 等で言及するのみ）。
+  sample_only:
+    - scripts/run_pipeline.py
+    - src/sample/
+    - src/observability/
+    - src/my_package/
+    - tests/test_sample_properties.py
+    - tests/test_core.py
+    - tests/test_pipeline.py
+    - tests/test_smoke.py
+    - tests/conftest.py
+    - tests/__init__.py
+    - pyproject.toml.template
+    - configs/pipeline_default.toml
+    # テンプレート内部ドキュメント（改善計画・レビューレポート等）
+    - docs/improvement-plan-dev-orchestration-template-001.md
+    - docs/improvement-requirements-dev-orchestration-template-001.md
+    - docs/fix-proposal-improvement-docs-dev-orchestration-template-001.md
+    - docs/review-improvement-docs-dev-orchestration-template-001.md
+    - docs/review-report.md

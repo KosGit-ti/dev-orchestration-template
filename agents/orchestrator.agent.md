@@ -113,6 +113,77 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
 - **Nice でスキップ**: 「ご指摘ありがとうございます。改善提案として認識しました。今回のスコープ外のため次回以降で検討します。」
 - **対応不要と判断**: 「ご指摘ありがとうございます。<対応不要と判断した技術的理由>。」
 
+## PR 状態診断フロー
+
+CI が正常に終了しない（失敗・タイムアウト・無応答）場合、または PR の状態が不明な場合に実行するフロー。
+
+### トリガー条件
+
+- `gh pr checks` の結果が pending のままタイムアウトした場合
+- CI チェックに対して応答（passed / failed いずれも）が返ってこない場合
+- コンフリクトが疑われる場合
+
+### 診断手順
+
+```bash
+# 1. PR の現在の状態を取得する
+gh pr view <PR_NUMBER> --json state,mergeable,mergeStateStatus,headRefName,baseRefName,title
+
+# 2. 全 CI チェックの状態を確認する
+gh pr checks <PR_NUMBER>
+```
+
+取得した情報を以下の判定テーブルに照合する：
+
+| mergeStateStatus | mergeable | 判定 | 対処 |
+|---|---|---|---|
+| `DIRTY` | `CONFLICTING` | コンフリクトあり | コンフリクト解決フローを実行する |
+| `BLOCKED` | `MERGEABLE` | CI 未通過（または必須チェック未完了の可能性あり） | `gh pr checks` で failed/pending の内容を確認し修正フローに戻る |
+| `BEHIND` | `MERGEABLE` | ベースブランチ遅延 | ブランチ更新フローを実行する |
+| `UNKNOWN` | `UNKNOWN` | 状態不明 | 2分待機×最大3回 再確認し、変化なければエスカレーション |
+| `HAS_HOOKS` | `MERGEABLE` | マージ前フックあり（CI 結果は `gh pr checks` で判定） | 少し待機した上で `gh pr checks` を再実行し、passed を確認 |
+| （上記以外） | 任意 | 想定外状態 | 表にない状態として扱い、人間による再確認・エスカレーションを行う |
+
+### コンフリクト解決フロー
+
+```bash
+# (a) リモートの最新状態を取得する
+git fetch origin
+
+# (b) ベースブランチの変更をマージする
+git merge origin/<BASE_BRANCH> --no-edit
+
+# (c) コンフリクトが発生した場合、コンフリクトファイルを確認する
+git status --short | grep "^UU\|^AA\|^DD\|^AU\|^UA\|^DU\|^UD"
+
+# (d) コンフリクト解決を implementer に委譲する
+
+# (e) 解決後にコミット・プッシュする
+git add -A && git commit -m "fix: コンフリクト解消 — origin/<BASE_BRANCH> をマージ"
+git push origin <HEAD_BRANCH>
+```
+
+コンフリクト解消後、**CI 待機（PR 後の必須フロー A）に戻る**。
+
+### ブランチ更新フロー（BEHIND の場合）
+
+```bash
+git fetch origin
+git merge origin/<BASE_BRANCH> --no-edit
+git push origin <HEAD_BRANCH>
+```
+
+更新後、**CI 待機（PR 後の必須フロー A）に戻る**。
+
+### エスカレーション条件
+
+以下のいずれかに該当する場合は自動解決を停止し、人間に状況を報告する：
+
+- 診断フローを3回実行しても `mergeStateStatus` が正常にならない
+- コンフリクトが自動解消できない（バイナリファイル、複雑な競合等）
+- `state` が `closed` になっている（PR が意図せず Close された）
+- その他、原因不明の状態が継続する
+
 ## 停止条件
 
 - ポリシー違反（P-001〜P-003）の検出
