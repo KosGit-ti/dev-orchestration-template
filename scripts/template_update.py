@@ -33,9 +33,7 @@ except ImportError:
 # ──────────────────────────────────────────────
 # 定数
 # ──────────────────────────────────────────────
-DEFAULT_TEMPLATE_URL = (
-    "https://github.com/KosGit-ti/dev-orchestration-template.git"
-)
+DEFAULT_TEMPLATE_URL = "https://github.com/KosGit-ti/dev-orchestration-template.git"
 MANIFEST_FILE = ".template-update.yml"
 BACKUP_BRANCH_PREFIX = "backup-before-template-update"
 
@@ -119,9 +117,7 @@ def _parse_manifest_simple(manifest_path: Path) -> dict[str, list[str]]:
     return categories
 
 
-def classify_file(
-    rel_path: str, categories: dict[str, list[str]]
-) -> str:
+def classify_file(rel_path: str, categories: dict[str, list[str]]) -> str:
     """ファイルパスをマニフェストのカテゴリに分類する。
 
     優先度: sample_only > never_update > always_update > add_only
@@ -163,20 +159,16 @@ def collect_files(directory: Path) -> list[str]:
 def create_backup_branch(project_dir: Path) -> str:
     """バックアップブランチを作成する。"""
     # 現在のブランチ名を取得
-    result = run_cmd(
-        ["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=project_dir
-    )
+    result = run_cmd(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=project_dir)
     current_branch = result.stdout.strip()
 
     # タイムスタンプ付きバックアップブランチ名
     import datetime
 
-    ts = datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y%m%d-%H%M%S")
+    ts = datetime.datetime.now(tz=datetime.UTC).strftime("%Y%m%d-%H%M%S")
     backup_branch = f"{BACKUP_BRANCH_PREFIX}-{ts}"
 
-    run_cmd(
-        ["git", "branch", backup_branch], cwd=project_dir
-    )
+    run_cmd(["git", "branch", backup_branch], cwd=project_dir)
     print(f"  バックアップブランチ作成: {backup_branch} (from {current_branch})")
     return backup_branch
 
@@ -202,10 +194,10 @@ def analyze(
     project_files = set(collect_files(project_dir))
 
     plan: dict[str, list[dict[str, str]]] = {
-        "update": [],      # always_update: 上書きするファイル
-        "add": [],         # add_only: 新規追加するファイル
+        "update": [],  # always_update: 上書きするファイル
+        "add": [],  # add_only: 新規追加するファイル
         "skip_project": [],  # never_update: スキップ（プロジェクト固有）
-        "skip_sample": [],   # sample_only: スキップ（サンプル）
+        "skip_sample": [],  # sample_only: スキップ（サンプル）
         "unclassified": [],  # 未分類
     }
 
@@ -214,32 +206,42 @@ def analyze(
         exists_in_project = rel_path in project_files
 
         if category == "always_update":
-            plan["update"].append({
-                "path": rel_path,
-                "action": "上書き" if exists_in_project else "新規追加",
-            })
+            plan["update"].append(
+                {
+                    "path": rel_path,
+                    "action": "上書き" if exists_in_project else "新規追加",
+                }
+            )
         elif category == "add_only":
             if not exists_in_project:
-                plan["add"].append({
-                    "path": rel_path,
-                    "action": "新規追加",
-                })
+                plan["add"].append(
+                    {
+                        "path": rel_path,
+                        "action": "新規追加",
+                    }
+                )
             # 既存ファイルはスキップ（ログ不要）
         elif category == "never_update":
-            plan["skip_project"].append({
-                "path": rel_path,
-                "reason": "プロジェクト固有",
-            })
+            plan["skip_project"].append(
+                {
+                    "path": rel_path,
+                    "reason": "プロジェクト固有",
+                }
+            )
         elif category == "sample_only":
-            plan["skip_sample"].append({
-                "path": rel_path,
-                "reason": "サンプルファイル",
-            })
+            plan["skip_sample"].append(
+                {
+                    "path": rel_path,
+                    "reason": "サンプルファイル",
+                }
+            )
         else:
-            plan["unclassified"].append({
-                "path": rel_path,
-                "reason": "マニフェスト未定義",
-            })
+            plan["unclassified"].append(
+                {
+                    "path": rel_path,
+                    "reason": "マニフェスト未定義",
+                }
+            )
 
     return plan
 
@@ -258,7 +260,8 @@ def print_report(plan: dict[str, list[dict[str, str]]]) -> None:
 
     print(f"\n✅ 更新対象 (always_update): {len(update_files)} ファイル")
     for item in update_files:
-        print(f"   {'📝' if item['action'] == '上書き' else '➕'} {item['path']} [{item['action']}]")
+        icon = "📝" if item["action"] == "上書き" else "➕"
+        print(f"   {icon} {item['path']} [{item['action']}]")
 
     print(f"\n➕ 新規追加 (add_only): {len(add_files)} ファイル")
     for item in add_files:
