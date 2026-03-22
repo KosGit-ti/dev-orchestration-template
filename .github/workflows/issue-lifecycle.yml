@@ -8,14 +8,14 @@ on:
   pull_request:
     types: [closed]
 
+concurrency:
+  group: issue-lifecycle-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 permissions:
   issues: write
   contents: read
   pull-requests: read
-
-concurrency:
-  group: issue-lifecycle-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
 
 jobs:
   close-issues:
@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
       - name: Extract linked issues from PR body
         id: extract

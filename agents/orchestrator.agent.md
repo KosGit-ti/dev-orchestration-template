@@ -8,13 +8,11 @@
 ## 自動実行トリガー
 
 以下のトリガーフレーズで自動実行パイプラインを開始する（承認確認不要）：
-
 - 「計画に従い作業を実施して」「Nextを実行して」「plan.md に従って進めて」「作業を開始して」「タスクを実行して」
 
 ## 計画修正トリガー
 
 以下のトリガーフレーズで計画修正パイプラインを開始する：
-
 - 「計画を修正して」「計画を見直して」「新しい要件を追加して」「Issue を追加して」「Backlog に追加して」「計画を更新して」
 
 ## 参照する正本
@@ -31,236 +29,89 @@
 2. フィーチャーブランチを作成する（`feat/<タスクID>-<説明>`）
 3. タスクを実装単位に分解する
 4. 各サブエージェントに指示を出す：
-   - **implementer**: 実装（即座に着手、**Serena MCP でコード構造を把握してから実装する — Shift-Left 原則**）
+   - **implementer**: 実装（即座に着手）
    - **test_engineer**: テスト作成（即座に着手）
-     4.5. セマンティック影響分析（条件付き）
-   - `src/` ファイルの変更がある場合のみ実行する
-   - implementer が Serena 分析済み → 結果を監査用に保持して次へ
-   - implementer が Serena 未実施 → `get_symbols_overview` + `find_referencing_symbols` で影響分析
-   - テスト/docs/config のみの変更、または Serena MCP 利用不可 → スキップ
 5. ローカル CI を実行する（失敗時は修正指示→再実行、最大3回）
-   - **重要**: 型チェックのスコープにはテストファイルも必ず含める
-     5.5. 全体エラー検証（ゲートチェック）
-   - get_errors ツールでワークスペース全体のコンパイルエラー・型エラーを取得する
-   - **エラーがゼロになるまで監査ステップに進まない**
 6. 3つの監査エージェントに監査を委譲する：
    - **auditor_spec**: 仕様監査
    - **auditor_security**: セキュリティ監査
    - **auditor_reliability**: 信頼性監査
-   - **重要**: Step 4.5 のセマンティック影響分析レポートがある場合は、各監査エージェントに渡す。
-     これにより auditor_reliability の Serena Stage 3 の重複分析を回避する。
 7. Must 指摘がゼロになるまで修正ループ（最大3回）
 8. コミット・プッシュし、PR を作成する
-   - **コミット直前ゲート原則**: コミット直前に CI（検証モード: `--check`）+ get_errors がパスしていることを確認する。CI 実行後にコードを変更した場合は CI を再実行すること
+   - **PR 本文は必ず一時ファイルに書き出してから `--body-file` で渡す**（`--body` 禁止。`\n` がリテラル文字として送信され Markdown が崩壊するため）
+   - MCP API で PR を作成・更新する場合も、本文は必ずファイル経由で渡す
    - PR 本文に `Closes #XX` を必ず記載する（対象 Issue は plan.md の対応表を参照）
    - PR テンプレート（`.github/PULL_REQUEST_TEMPLATE.md`）に従う
-9. PR の CI を監視する（失敗時は修正→再プッシュ、最大3回）
-   - 60秒間隔で `gh pr checks <PR_NUMBER>` を最大20回（最大20分）実行し、全チェックが `success` になるまで查許する
-   - `failure` / `cancelled` のチェックが出た場合：原因を特定し、修正→再プッシュを最大3回試みる
-   - 20回実行しても一部が `pending` / `in_progress` のままの場合：**PR 状態診断フロー**（後述）を実行して原因（コンフリクト・ブランチ遅延等）を特定・解消してから CI 監視に戻る
-   - エスカレーション：上記ループ（修正→再プッシュを含む）を3回試行しても解決できない場合は人間に報告して停止する
-10. Copilot コードレビュー対応ループ（最大3回）— 詳細は後述
-11. **release_manager** に最終判定を委譲する
-12. 人間の最終承認を得てからマージする
-13. マージ後の Issue / Project 検証（独立監査）
+9. **PR 後の必須フロー**を実行する（`.github/copilot-instructions.md` の「PR 後の必須フロー」セクション参照。省略禁止）
+   - A: CI 待機・対応
+   - B: Copilot レビュー待機・対応
+   - C: 承認待ち報告
+10. **release_manager** に最終判定を委譲する
+11. 承認待ち状態を報告して作業を終了する（マージ判断は人間が行う）
+12. マージ後の Issue / Project 検証（独立監査）
     - `issue-lifecycle` ワークフローが Issue を自動 Close したことを確認する
     - GitHub Projects で対象アイテムが「Done」に移動したことを確認する
     - `plan.md` の Done セクションに完了タスクが記載されていることを確認する
     - 不整合がある場合は手動で `gh issue close` / `gh project item-edit` で修正する
 
-## Step 10: Copilot コードレビュー対応（初回レビューのみ）
+## PR 後の必須フロー（Step 9 の詳細）
 
-PR 作成後、Copilot が自動トリガーする**初回レビューのみ**を取得・対応する。
-修正 push 後の再レビュー依頼は行わず、静的解析の通過をもって品質ゲートとする。
+PR 作成後、または既存 PR へのコミット push 後は、`.github/copilot-instructions.md` の
+「PR 後の必須フロー」セクションに **必ず従う**（省略禁止）。
+以下はその要約。
 
-### 技術的背景
+### A. CI 待機・対応
 
-GitHub Copilot Code Review の再レビュー依頼は API 経由では技術的に不可能である（2025-07 時点）。
-検証の結果、以下のすべての方法が失敗することを確認済み：
+- `gh pr checks <PR番号> --watch` で CI 完了を待機
+- CI 失敗時 → implementer に修正指示 → 再 push → A に戻る（最大3回）
+- CI 成功 → B へ
 
-- REST API `POST /requested_reviewers`（Bot に対しては無視される）
-- REST API `DELETE` → `POST`（同上）
-- GraphQL `requestReviews`（Bot ノードを User として解決できない）
-- `COMMENTED` レビューの dismiss（422 エラー）
+### B. Copilot レビュー待機・対応
 
-唯一機能するのは GitHub GUI の「Re-request review」ボタンのみであり、自動化パイプラインでは利用できない。
+- Copilot レビュー到着を 60秒間隔×最大20回（20分）ポーリング
+- レビュー到着 → コメント取得 → Must/Should/Nice に分類
+- Must/Should あり → implementer に修正委譲 → コメント返信 → push → **A に戻る**
+- 指摘なし or approve → C へ
 
-### 設計原則（4つ）
+**回数制限**: Copilot レビュー対応に回数制限はない（安全上限: 100回）。
 
-1. **初回レビューのみ取得**
-   - PR 作成時にリポジトリ設定により自動トリガーされる初回レビューを対象とする
-   - 修正 push 後の再レビュー依頼は行わない（API 制限により不可能）
+**重要**: Copilot 再レビューは API から自動依頼できない。push 後にレビューが来なかった場合は
+「Copilot 再レビューは人間が GitHub GUI の Re-request review ボタンから依頼してください」と報告する。
 
-2. **静的解析が品質ゲート**
-   - 修正 push 後は CI + get_errors の通過をもって品質を担保する（再レビューの代替）
-   - 静的解析が通らない修正はプッシュしない
+### C. 承認待ち報告
 
-3. **回数制限（Bounded Recursion）**
-   - 初回レビュー指摘への対応は**最大3回のイテレーション**で制限する
-   - 上限に達したら Human-in-the-loop でエスカレーションする
-
-4. **静的解析ファースト**
-   - AI レビューの**前に** Linter / Formatter / Unit Test を強制的にパスさせる
-   - Step 4（ローカル CI）+ Step 4.5（get_errors）が通過していることを前提とする
-
-### 手順
-
-```
-1. CI 通過を確認する
-   - `gh pr checks <PR_NUMBER> --watch` で CI ステータスを監視する
-   - CI が失敗した場合は修正フローに戻る
-
-2. 初回 Copilot レビューの到着を待機する
-   - レビューカウントをポーリングで監視する（後述）
-   - レビュー検出後、コメント安定化フェーズを実行する（後述）
-   - タイムアウト（20分）した場合はスキップして次へ進む
-
-3. レビューコメントを取得する
-   - `gh api repos/{owner}/{repo}/pulls/{pr}/reviews` で全レビューを取得
-   - `gh api repos/{owner}/{repo}/pulls/{pr}/comments` でインラインコメントを取得
-   - 自分の返信済みコメントを除外し、未対応コメントのみ抽出する
-
-4. 指摘を分類する
-   - Must: マージ前に修正必須 → 修正対象
-   - Should: 強く推奨 → 修正対象（時間が許せば）
-   - Nice: 改善提案 → 今回はスキップ可
-
-5. Must / Should の指摘がゼロなら → ループ終了
-
-review_iteration = 0
-while review_iteration < 3 かつ Must/Should 指摘あり:
-    6. 修正を実施する
-       - 各指摘の対象ファイル・行番号・提案内容を implementer に伝達
-       - implementer が修正を実施
-       - ※ すべての指摘に対するコード修正を完了してから次のステップに進む
-
-    7. 各レビューコメントに返信する
-       - ※ このステップではコードファイルを変更しない（返信テキストのみ）
-
-    8. コミット直前ゲート（ローカル CI + get_errors — 設計原則 #4）
-       - CI ツール一式を検証モード（`--check`）で実行する
-       - get_errors（filePaths 省略）でエラーゼロを確認する
-       - 通らない場合は Step 6 に戻り修正する
-       - ⚠️ **CI は検証モード（`--check`）で実行する。フォーマッタ適用は Step 6 の修正フェーズで行うこと**
-       - ⚠️ **このステップ通過後、コミットまでの間にコードファイルへの変更は一切禁止**
-       - ⚠️ CI 実行後にいかなるコード変更（フォーマッタ適用含む）が発生した場合は、このステップを再実行すること
-
-    9. コミット・プッシュする
-       - `git add -A && git commit -m "fix: Copilot レビュー指摘対応 (iteration N)"`
-       - `git status --porcelain` で出力が空であることを確認する
-       - ⚠️ 出力が空でない場合（未コミットの変更が残っている場合）は **Step 8 に戻る**（直接コミットしない）
-       - **再レビュー依頼は行わない**（静的解析の通過が品質ゲート — 設計原則 #2）
-
-    9.5. プッシュ後 GitHub CI の再確認（必須）
-       - 30秒間隔で最大20回（タイムアウト約 10分）`gh pr checks <PR_NUMBER>` を実行し、その都度全ステータスを確認する
-       - **いずれかのポーリング時点で全チェックが passed / success** → 次のステップへ進む
-       - **いずれかのポーリング時点でいずれかが failed** → Step 6 の修正フローに戻り、最大3回まで修正・再プッシュを試みる
-       - **最大20回実行しても pending のまま変化なし（タイムアウト約10分）または応答なし** →
-         PR 状態診断フロー（後述）を実行してから、診断結果に応じて通常フローに復帰する
-       - ⚠️ CI の通過確認を省略してレビューコメント確認 (Step 10) に進んではならない
-
-    10. 初回レビューの未対応コメントを確認する
-       - 未対応の Must/Should 指摘がなければ → ループ終了
-       - review_iteration++
-       - ※ 再レビューは来ないため、確認対象は初回レビューのコメントのみ
-```
-
-### 初回レビュー到着待機手順
-
-PR 作成直後の Copilot レビュー到着を待機する手順。
-
-```bash
-# (a) 現在のレビュー数を記録する
-BEFORE_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
-  --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
-
-# (b) 新しいレビューが届くまでポーリングする（60秒間隔 × 最大20回 = 最大20分）
-REVIEW_RECEIVED=false
-for i in $(seq 1 20); do
-  sleep 60
-  CURRENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/reviews" \
-    --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
-  echo "レビュー待機中... ($i/20, レビュー数: $BEFORE_COUNT → $CURRENT_COUNT)"
-  if [ "$CURRENT_COUNT" -gt "$BEFORE_COUNT" ]; then
-    REVIEW_RECEIVED=true
-    echo "✅ Copilot レビューを検出しました"
-    break
-  fi
-done
-
-# (c) コメント安定化フェーズ（レビュー検出後に実行）
-if [ "$REVIEW_RECEIVED" = "true" ]; then
-  echo "コメント安定化フェーズに入ります..."
-  LAST_COMMENT_COUNT=0
-  STABLE_CHECKS=0
-  for i in $(seq 1 8); do
-    sleep 15
-    CURRENT_COMMENT_COUNT=$(gh api "repos/{owner}/{repo}/pulls/{pr_number}/comments" \
-      --jq '[.[] | select(.user.login == "copilot-pull-request-reviewer[bot]")] | length')
-    echo "コメント安定化待機... ($i/8, コメント数: $CURRENT_COMMENT_COUNT)"
-    if [ "$CURRENT_COMMENT_COUNT" = "$LAST_COMMENT_COUNT" ] && [ "$CURRENT_COMMENT_COUNT" -gt "0" ]; then
-      STABLE_CHECKS=$((STABLE_CHECKS + 1))
-      if [ "$STABLE_CHECKS" -ge 3 ]; then
-        echo "✅ コメントが安定しました（$CURRENT_COMMENT_COUNT 件）"
-        break
-      fi
-    else
-      STABLE_CHECKS=0
-    fi
-    LAST_COMMENT_COUNT=$CURRENT_COMMENT_COUNT
-  done
-fi
-
-# (d) タイムアウト判定
-if [ "$REVIEW_RECEIVED" = "false" ]; then
-  echo "⚠️ Copilot レビューが 20 分以内に届きませんでした"
-  echo "Copilot Code Review がリポジトリで有効化されているか確認してください"
-  # タイムアウト時はスキップして次へ進む（再レビューは求めない設計のため）
-fi
-```
+- 「CI 通過・レビュー対応完了。人間のレビュー・承認を待っています。」と報告する
+- **禁止**: 「マージしていいですか？」等のマージ確認質問
+- 人間から追加指示があれば B に戻る
 
 ### レビューコメント取得コマンド
 
 ```bash
-# PR の全レビューを取得（著者・状態・本文）
+# PR の全レビューを取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews \
   --jq '.[] | {author: .user.login, state: .state, body: .body}'
 
-# インラインコメント（ファイル・行番号・提案）を取得
+# インラインコメント取得
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   --jq '.[] | {author: .user.login, path: .path, line: .line, body: .body, id: .id, in_reply_to_id: .in_reply_to_id}'
 
-# 未返信のコメントのみ抽出する（in_reply_to_id がないトップレベルコメント）
+# 未返信のコメントのみ抽出
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments \
   --jq '[.[] | select(.in_reply_to_id == null)] | map({id, author: .user.login, path, line, body})'
 ```
 
 ### レビューコメント返信コマンド
 
-各コメントに対して返信する。返信は元コメントのスレッドに紐づく。
-
 ```bash
-# コメントに返信する（comment_id はインラインコメントの ID）
 gh api repos/{owner}/{repo}/pulls/{pr_number}/comments/{comment_id}/replies \
   -f body="対応しました。<修正内容の説明>（<コミットハッシュ>）。"
 ```
 
 ### 返信テンプレート
 
-対応内容に応じて以下のテンプレートを使用する：
-
 - **修正済み**: 「対応しました。<具体的な修正内容>（<コミットハッシュ>）。」
 - **Nice でスキップ**: 「ご指摘ありがとうございます。改善提案として認識しました。今回のスコープ外のため次回以降で検討します。」
 - **対応不要と判断**: 「ご指摘ありがとうございます。<対応不要と判断した技術的理由>。」
-
-### 注意事項
-
-- Copilot レビューが設定されていない場合（初回レビューが来ない場合）はスキップ可
-- **再レビュー依頼は行わない**: API 経由での再レビューは技術的に不可能（Bot 仕様制限、2025-07 検証済み）
-- **静的解析が品質ゲート**: 修正 push 後は CI + get_errors の通過をもって品質を担保する
-- **回数制限**: 3回のイテレーションで解決しない場合は、残存指摘を一覧表示して人間に判断を委ねる
-- レビュアーが Copilot 以外（人間）の場合は、指摘を表示して人間に判断を委ねる
-- 全てのレビューコメントには必ず返信する（未返信のコメントを残さない）
 
 ## PR 状態診断フロー
 
@@ -284,14 +135,14 @@ gh pr checks <PR_NUMBER>
 
 取得した情報を以下の判定テーブルに照合する：
 
-| mergeStateStatus | mergeable     | 判定                                                  | 対処                                                             |
-| ---------------- | ------------- | ----------------------------------------------------- | ---------------------------------------------------------------- |
-| `DIRTY`          | `CONFLICTING` | コンフリクトあり                                      | コンフリクト解決フローを実行する                                 |
-| `BLOCKED`        | `MERGEABLE`   | CI 未通過（または必須チェック未完了の可能性あり）     | `gh pr checks` で failed/pending の内容を確認し修正フローに戻る  |
-| `BEHIND`         | `MERGEABLE`   | ベースブランチ遅延                                    | ブランチ更新フローを実行する                                     |
-| `UNKNOWN`        | `UNKNOWN`     | 状態不明                                              | 2分待機×最大3回 再確認し、変化なければエスカレーション           |
-| `HAS_HOOKS`      | `MERGEABLE`   | マージ前フックあり（CI 結果は `gh pr checks` で判定） | 少し待機した上で `gh pr checks` を再実行し、passed を確認        |
-| （上記以外）     | 任意          | 想定外状態                                            | 表にない状態として扱い、人間による再確認・エスカレーションを行う |
+| mergeStateStatus | mergeable | 判定 | 対処 |
+|---|---|---|---|
+| `DIRTY` | `CONFLICTING` | コンフリクトあり | コンフリクト解決フローを実行する |
+| `BLOCKED` | `MERGEABLE` | CI 未通過（または必須チェック未完了の可能性あり） | `gh pr checks` で failed/pending の内容を確認し修正フローに戻る |
+| `BEHIND` | `MERGEABLE` | ベースブランチ遅延 | ブランチ更新フローを実行する |
+| `UNKNOWN` | `UNKNOWN` | 状態不明 | 2分待機×最大3回 再確認し、変化なければエスカレーション |
+| `HAS_HOOKS` | `MERGEABLE` | マージ前フックあり（CI 結果は `gh pr checks` で判定） | 少し待機した上で `gh pr checks` を再実行し、passed を確認 |
+| （上記以外） | 任意 | 想定外状態 | 表にない状態として扱い、人間による再確認・エスカレーションを行う |
 
 ### コンフリクト解決フロー
 
@@ -299,22 +150,20 @@ gh pr checks <PR_NUMBER>
 # (a) リモートの最新状態を取得する
 git fetch origin
 
-# (b) ベースブランチの変更をマージまたはリベースする
+# (b) ベースブランチの変更をマージする
 git merge origin/<BASE_BRANCH> --no-edit
-# ⚠️ コンフリクトが発生した場合は以下を行う
 
-# (c) コンフリクトしているファイルを確認する
+# (c) コンフリクトが発生した場合、コンフリクトファイルを確認する
 git status --short | grep "^UU\|^AA\|^DD\|^AU\|^UA\|^DU\|^UD"
 
 # (d) コンフリクト解決を implementer に委譲する
-# 対象ファイル・コンフリクト箇所を明示して解決を指示する
 
 # (e) 解決後にコミット・プッシュする
 git add -A && git commit -m "fix: コンフリクト解消 — origin/<BASE_BRANCH> をマージ"
 git push origin <HEAD_BRANCH>
 ```
 
-コンフリクト解消後、**Step 9.5（プッシュ後 GitHub CI の再確認）に戻る**。
+コンフリクト解消後、**CI 待機（PR 後の必須フロー A）に戻る**。
 
 ### ブランチ更新フロー（BEHIND の場合）
 
@@ -324,7 +173,7 @@ git merge origin/<BASE_BRANCH> --no-edit
 git push origin <HEAD_BRANCH>
 ```
 
-更新後、**Step 9.5 に戻る**。
+更新後、**CI 待機（PR 後の必須フロー A）に戻る**。
 
 ### エスカレーション条件
 
@@ -334,13 +183,6 @@ git push origin <HEAD_BRANCH>
 - コンフリクトが自動解消できない（バイナリファイル、複雑な競合等）
 - `state` が `closed` になっている（PR が意図せず Close された）
 - その他、原因不明の状態が継続する
-
-エスカレーション時は以下の情報を人間に提示する：
-
-- PR の URL と番号
-- `gh pr view` の出力（state / mergeable / mergeStateStatus）
-- `gh pr checks` の出力
-- 試みた診断・修正の履歴
 
 ## 停止条件
 
@@ -405,8 +247,11 @@ PR を作成する際、完了する Issue を PR 本文に明記する：
    d. 変更履歴に修正内容を記録する
 
 4. GitHub Issues を作成する
+   cat > /tmp/issue_body.md << 'ISSUEBODY'
+   <Issue 本文をここに記述>
+   ISSUEBODY
    gh issue create --title "<タスクタイトル>" \
-     --body "<タスク説明（受入条件を含む）>" \
+     --body-file /tmp/issue_body.md \
      --label "<ラベル>"
 
 5. Issues を GitHub Project に追加する
@@ -475,63 +320,9 @@ done
 - 自動実行パイプライン実行中に計画修正は行わない（完了後に修正する）
 - ポリシー・制約に関わる変更は、先に docs/policies.md や docs/constraints.md を更新する
 
-## 汎用リクエストモード（General Request）
-
-自動実行モード・計画修正モードのいずれのトリガーにも該当しないリクエスト（改善提案、調査依頼、設定変更、リファクタリング指示など）の場合にこのモードを適用する。
-
-### 適用判定
-
-ユーザーのリクエストが以下のいずれかに該当する場合、汎用リクエストモードとして実行する：
-
-- 改善提案・リファクタリング指示
-- 設定変更・構成変更
-- 調査依頼・分析依頼の結果としてコード変更が発生
-- バグ報告への対応
-- エージェント定義やインストラクションの更新
-
-### 実行フロー
-
-```
-1. リクエストの分析
-   - ユーザーの要求を分解する（what / why / scope）
-   - 影響範囲を特定する（変更対象ファイル、依存関係）
-   - 対応方針を策定する
-
-2. 実装の委譲
-   - コードファイルの変更は implementer に委譲する
-   - テストが必要な場合は test-engineer に委譲する
-   - ドキュメントのみの場合は自ら実行可
-
-3. 品質検証（コードを変更した場合は必須）
-   a. ローカル CI の実行（具体的コマンドは docs/runbook.md を参照）
-   b. 全体エラー検証
-      - get_errors ツール（filePaths 省略）でワークスペース全体のエラーがゼロであることを確認する
-   c. 変更ファイルの個別検証
-      - 変更したファイルに対して get_errors ツール（filePaths 指定）で個別検証する
-   d. セルフレビュー
-      - 変更内容がポリシー（P-001〜P-003）に違反していないか自己確認する
-
-4. 失敗時の修正ループ（最大3回）
-   - CI 失敗またはエラー残存時は implementer に修正を指示し、3. に戻る
-
-5. コミット・プッシュ
-   - 検証を通過したら変更をコミット・プッシュする
-```
-
-### 品質検証の省略条件
-
-以下の**すべて**を満たす場合のみ、品質検証を省略可能：
-
-- `docs/` 配下のドキュメント**のみ**の変更である
-- コードファイルへの影響がない
-- エージェント定義ファイルの変更もない
-
-上記を満たさない場合（コード・エージェント定義・設定ファイルのいずれかを変更した場合）は品質検証を**省略してはならない**。
-
 ## モデル最適化トリガー
 
 以下のフレーズでユーザーが指示した場合、AI モデルの見直しを行う：
-
 - 「モデルを最適化して」「モデルを見直して」「AIモデルを更新して」
 
 ### 手順

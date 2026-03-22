@@ -22,7 +22,7 @@ project:
   scope_out: | # スコープ外
     - 除外する機能1
     - 除外する機能2
-  owner: "githypn" # GitHub ユーザー名または Org
+  owner: "" # GitHub ユーザー名または Org（空の場合は setup_github.sh が現在のリポジトリから自動検出）
 
 # --- 言語・ツールチェイン ---
 toolchain:
@@ -109,10 +109,10 @@ ai_models:
   # エージェントごとに異なるモデルを使いたい場合に個別指定する（任意）
   # 未指定のエージェントは default が適用される
   overrides:
-    orchestrator: "Claude Opus 4.6 (copilot)" # 高度な判断・調整が必要（3x）
-    implementer: "Claude Sonnet 4.6 (copilot)" # SWE-bench 最強、コスト 1x
-    test_engineer: "Claude Sonnet 4.6 (copilot)" # 反復的テスト生成に適する（1x）
-    auditor_spec: "Claude Sonnet 4.6 (copilot)" # 論理照合が主タスク（1x）
-    auditor_security: "Claude Sonnet 4.6 (copilot)" # パターンマッチ主体（1x）
-    auditor_reliability: "Claude Sonnet 4.6 (copilot)" # 信頼性分析（1x）
-    release_manager: "Claude Opus 4.6 (copilot)" # 最終判定、最高品質が必要（3x）
+    # orchestrator: "Claude Opus 4.6 (copilot)"
+    # implementer: "Claude Sonnet 4.5 (copilot)"
+    # test_engineer: "Claude Sonnet 4.5 (copilot)"
+    # auditor_spec: "Claude Sonnet 4.5 (copilot)"
+    # auditor_security: "Claude Sonnet 4.5 (copilot)"
+    # auditor_reliability: "Claude Sonnet 4.5 (copilot)"
+    # release_manager: "Claude Sonnet 4.5 (copilot)"
