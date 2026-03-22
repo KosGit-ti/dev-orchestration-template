@@ -2,18 +2,22 @@
   // ===== Copilot Agent Orchestration =====
   // サブエージェント機能を有効にする（実験的機能）
   "chat.customAgentInSubagent.enabled": true,
-
+  // Copilot Agent の Auto Pilot モード（ツール実行を自動承認）
+  "chat.agent.autoApprove": "full",
   // 推論の深さを最大にする（計画・監査エージェント向け）
   "github.copilot.chat.responsesApiReasoningEffort": "high",
-
   // ===== Python 固定設定 =====
   "python.analysis.typeCheckingMode": "strict",
   "python.testing.pytestEnabled": true,
-  "python.testing.pytestArgs": ["tests"],
-
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
   // ===== エディタ設定 =====
   "editor.formatOnSave": true,
-  "editor.rulers": [100],
+  "editor.rulers": [
+    100
+  ],
   "files.trimTrailingWhitespace": true,
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "github.copilot.chat.agent.autoFix": true
 }
