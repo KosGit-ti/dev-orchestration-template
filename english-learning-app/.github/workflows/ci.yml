@@ -1,0 +1,60 @@
+# =============================================================================
+# CI: 品質ゲート
+# =============================================================================
+# web/ の lint・型検査・単体テスト・コンテンツ検証・静的エクスポートを通す。
+# どれか 1 つでも落ちたら merge させない。警告だけ出して通す段は置かない。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      # NOTE: サードパーティ Action はコミットハッシュ固定が原則（docs/policies.md P-040）。
+      # actions/* は GitHub 公式だが、BL-002 で本 repo でもハッシュ固定へ揃える。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Validate learning content
+        # 日本語混入（P-101）と設問の整合を落とす。完了ゲート G-5 の実体。
+        run: npm run validate:content
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: Static export build
+        run: npm run build

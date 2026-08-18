@@ -1,0 +1,121 @@
+name: Issue Lifecycle
+
+# PR マージ時に関連 Issue を自動検証・Close する。
+# PR 本文の "Closes #XX" / "Resolves #XX" / "Fixes #XX" を解析し、
+# plan.md の Done セクションとの整合性を監査してから Close する。
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: issue-lifecycle-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  close-issues:
+    if: github.event.pull_request.merged == true
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Extract linked issues from PR body
+        id: extract
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          echo "=== PR #${PR_NUMBER} merged ==="
+
+          # PR 本文から Closes/Resolves/Fixes #XX を抽出
+          ISSUES=$(echo "$PR_BODY" | grep -oiE '(close[sd]?|resolve[sd]?|fix(e[sd])?)\s+#[0-9]+' | grep -oE '#[0-9]+' | tr -d '#' | sort -un)
+
+          if [ -z "$ISSUES" ]; then
+            echo "PR 本文に Closes/Resolves/Fixes #XX が見つかりません。スキップします。"
+            echo "issues=" >> "$GITHUB_OUTPUT"
+            echo "has_issues=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "対象 Issue: $ISSUES"
+            echo "issues=$ISSUES" >> "$GITHUB_OUTPUT"
+            echo "has_issues=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Audit — plan.md 整合性チェック
+        if: steps.extract.outputs.has_issues == 'true'
+        env:
+          ISSUES: ${{ steps.extract.outputs.issues }}
+        run: |
+          echo "=== 独立監査: plan.md との整合性チェック ==="
+          WARNINGS=0
+
+          for NUM in $ISSUES; do
+            # plan.md の Done セクションに Issue 番号が記載されているか確認
+            if grep -q "#${NUM}" docs/plan.md; then
+              # Done セクション内にあるか、またはロードマップで完了マークか確認
+              if grep -A 100 "^## Done" docs/plan.md | grep -q "#${NUM}"; then
+                echo "✅ #${NUM}: plan.md の Done セクションに記載済み"
+              elif grep -q "#${NUM}" docs/plan.md; then
+                echo "⚠️ #${NUM}: plan.md に記載あるが Done セクション外。手動確認推奨"
+                WARNINGS=$((WARNINGS + 1))
+              fi
+            else
+              echo "⚠️ #${NUM}: plan.md に記載なし。Close は続行するが手動確認推奨"
+              WARNINGS=$((WARNINGS + 1))
+            fi
+          done
+
+          if [ $WARNINGS -gt 0 ]; then
+            echo "::warning::${WARNINGS} 件の警告あり。plan.md の更新を確認してください。"
+          fi
+
+          echo "=== 監査完了 ==="
+
+      - name: Audit — Issue 状態チェック
+        if: steps.extract.outputs.has_issues == 'true'
+        env:
+          ISSUES: ${{ steps.extract.outputs.issues }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== 独立監査: Issue 状態チェック ==="
+
+          for NUM in $ISSUES; do
+            STATE=$(gh issue view "$NUM" --json state --jq '.state')
+            if [ "$STATE" = "CLOSED" ]; then
+              echo "✅ #${NUM}: 既に Closed"
+            elif [ "$STATE" = "OPEN" ]; then
+              echo "📋 #${NUM}: Open → Close 対象"
+            else
+              echo "⚠️ #${NUM}: 不明な状態 ($STATE)"
+            fi
+          done
+
+          echo "=== 監査完了 ==="
+
+      - name: Close linked issues
+        if: steps.extract.outputs.has_issues == 'true'
+        env:
+          ISSUES: ${{ steps.extract.outputs.issues }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "=== Issue Close 実行 ==="
+
+          for NUM in $ISSUES; do
+            STATE=$(gh issue view "$NUM" --json state --jq '.state')
+            if [ "$STATE" = "OPEN" ]; then
+              gh issue close "$NUM" \
+                --comment "PR #${PR_NUMBER} のマージにより自動 Close。issue-lifecycle ワークフローによる。"
+              echo "✅ #${NUM}: Closed"
+            else
+              echo "⏭️ #${NUM}: 既に Closed、スキップ"
+            fi
+          done
+
+          echo "=== 完了 ==="

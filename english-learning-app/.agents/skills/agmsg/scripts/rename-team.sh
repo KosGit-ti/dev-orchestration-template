@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage: rename-team.sh <old_team> <new_team>
+#
+# Renames a team:
+#   1. moves teams/<old>/ to teams/<new>/
+#   2. updates "name" field in the moved config.json
+#   3. updates messages.db: UPDATE messages SET team=<new> WHERE team=<old>
+
+OLD_TEAM="${1:?Usage: rename-team.sh <old_team> <new_team>}"
+NEW_TEAM="${2:?Missing new team name}"
+
+if [ "$OLD_TEAM" = "$NEW_TEAM" ]; then
+  echo "Old and new team names are the same: $OLD_TEAM"
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/storage.sh"
+# Reject team names that would escape teams/ as a path segment, on either side
+# of the rename (#140).
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/lib/validate.sh"
+agmsg_validate_team_name "$OLD_TEAM" || exit 1
+agmsg_validate_team_name "$NEW_TEAM" || exit 1
+TEAMS_DIR="$SCRIPT_DIR/../teams"
+DB="$(agmsg_db_path)"
+OLD_DIR="$TEAMS_DIR/$OLD_TEAM"
+NEW_DIR="$TEAMS_DIR/$NEW_TEAM"
+
+if [ ! -d "$OLD_DIR" ]; then
+  echo "Team not found: $OLD_TEAM"
+  exit 1
+fi
+
+if [ -e "$NEW_DIR" ]; then
+  echo "Team already exists: $NEW_TEAM"
+  exit 1
+fi
+
+# --- Move directory ---
+mv "$OLD_DIR" "$NEW_DIR"
+
+# --- Update name in config.json ---
+NEW_CONFIG="$NEW_DIR/config.json"
+if [ -f "$NEW_CONFIG" ]; then
+  CONFIG_PATH=$(printf '%s' "$NEW_CONFIG" | sed "s/'/''/g")
+  NEW_TEAM_ESCAPED=$(printf '%s' "$NEW_TEAM" | sed "s/'/''/g")
+  UPDATED=$(sqlite3 :memory: \
+    "SELECT json_set(CAST(readfile('$CONFIG_PATH') AS TEXT), '\$.name', '$NEW_TEAM_ESCAPED');")
+  echo "$UPDATED" > "$NEW_CONFIG"
+fi
+
+# --- Update messages in DB ---
+if [ -f "$DB" ]; then
+  OLD_TEAM_ESCAPED=$(printf '%s' "$OLD_TEAM" | sed "s/'/''/g")
+  NEW_TEAM_ESCAPED=$(printf '%s' "$NEW_TEAM" | sed "s/'/''/g")
+  agmsg_sqlite "$DB" "UPDATE messages SET team='$NEW_TEAM_ESCAPED' WHERE team='$OLD_TEAM_ESCAPED';"
+fi
+
+echo "Renamed team $OLD_TEAM → $NEW_TEAM"
+echo
+echo "Note: existing members in other projects/sessions still see the old"
+echo "team name cached. Each member should re-run whoami in their project"
+echo "to pick up the new name:"
+echo
+echo "  ~/.agents/skills/<skill>/scripts/whoami.sh \"\$(pwd)\" <type>"

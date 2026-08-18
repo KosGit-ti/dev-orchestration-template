@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/KosGit-Dev/dev-orchestration-template/docs/ai/review-result.schema.json",
+  "title": "Repo-aware AI review result",
+  "type": "object",
+  "required": [
+    "summary",
+    "repository_context_mode",
+    "diff_only_reason",
+    "changed_files",
+    "related_files",
+    "scanned_paths",
+    "commands_run",
+    "context_fingerprint",
+    "context_budget",
+    "context_truncated",
+    "context_truncated_reason",
+    "issues"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repository_context_mode": {
+      "type": "string",
+      "enum": ["diff_only", "related_context", "full_repo_agentic"]
+    },
+    "diff_only_reason": {
+      "type": "string"
+    },
+    "changed_files": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "related_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "reason"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "excerpt": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "scanned_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "commands_run": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["command", "exit_code", "summary"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exit_code": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "context_fingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "context_budget": {
+      "type": "object",
+      "required": [
+        "max_related_files",
+        "max_context_chars",
+        "max_file_excerpt_chars",
+        "max_context_commands"
+      ],
+      "properties": {
+        "max_related_files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_context_chars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_file_excerpt_chars": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_context_commands": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "context_truncated": {
+      "type": "boolean"
+    },
+    "context_truncated_reason": {
+      "type": "string"
+    },
+    "context_budget_override_reason": {
+      "type": "string"
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "category", "file", "line", "rationale", "fix", "confidence"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["Must", "Should", "Nice"]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file": {
+            "type": "string",
+            "minLength": 1
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fix": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

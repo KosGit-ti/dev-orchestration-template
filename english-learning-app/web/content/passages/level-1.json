@@ -1,0 +1,42 @@
+[
+{
+  "id": "p-l1-001",
+  "title": "The Bus at Seven",
+  "level": 1,
+  "genre": "narrative",
+  "text": "Mika takes the same bus every morning. She leaves her house at seven and walks to the stop near the shop. The walk is short, so she is never {{1}}.\n\nToday the bus did not come at seven. Mika waited. Five minutes passed. Then ten. The air was {{2}}, and she put her hands in her pockets.\n\nAn old man at the stop looked at his watch. \"The bus is slow today,\" he said. Mika smiled and said nothing. She was thinking about her first class.\n\nAt last the bus arrived. It was full, so Mika stood near the door. She was late, but only by ten minutes. Her teacher did not mind.",
+  "glossary": [
+    { "headword": "stop", "definition": "a place where a bus waits for people" },
+    { "headword": "pocket", "definition": "a small bag in your clothes for keys or hands" }
+  ],
+  "clozes": [
+    { "id": "p-l1-001-c1", "answer": "late", "options": ["late", "cheap", "clean", "hungry"], "hint": "the opposite of early" },
+    { "id": "p-l1-001-c2", "answer": "cold", "options": ["cold", "loud", "full", "safe"], "hint": "she put her hands in her pockets because of this" }
+  ],
+  "questions": [
+    { "id": "p-l1-001-q1", "prompt": "Why does Mika arrive at the stop on time on a normal day?", "options": ["Her house is near the stop.", "She runs every morning.", "The bus waits for her.", "She leaves at six."], "answerIndex": 0, "rationale": "The text says the walk is short, so she is never late." },
+    { "id": "p-l1-001-q2", "prompt": "How long did Mika wait for the bus today?", "options": ["About ten minutes", "About one hour", "Only one minute", "She did not wait"], "answerIndex": 0, "rationale": "Five minutes passed, then ten, and she was late by ten minutes." },
+    { "id": "p-l1-001-q3", "prompt": "How did the teacher react?", "options": ["The teacher was not angry.", "The teacher sent her home.", "The teacher was also late.", "The teacher closed the door."], "answerIndex": 0, "rationale": "The last sentence says her teacher did not mind." }
+  ]
+},
+{
+  "id": "p-l1-002",
+  "title": "A Room with Two Windows",
+  "level": 1,
+  "genre": "expository",
+  "text": "Some rooms feel small. Some rooms feel big. The size of the room is only one reason.\n\nLight is another reason. A room with two windows feels bigger than a room with one window. When the sun comes in, the walls look far away. When the room is dark, the walls look near.\n\nColour helps too. White walls make a room feel {{1}}. Dark walls make it feel small and {{2}}.\n\nSo if your room feels small, do not move. Open the curtains first. Then paint one wall white. The room will not change its size, but it will change how it feels.",
+  "glossary": [
+    { "headword": "curtain", "definition": "cloth that hangs over a window to stop the light" },
+    { "headword": "paint", "definition": "to put colour on a wall with a brush" }
+  ],
+  "clozes": [
+    { "id": "p-l1-002-c1", "answer": "empty", "options": ["empty", "heavy", "busy", "tired"], "hint": "with a lot of open space and nothing in it" },
+    { "id": "p-l1-002-c2", "answer": "quiet", "options": ["quiet", "cheap", "early", "free"], "hint": "the opposite of loud" }
+  ],
+  "questions": [
+    { "id": "p-l1-002-q1", "prompt": "What is the main idea of this text?", "options": ["How a room feels does not depend only on its size.", "Small rooms are always bad.", "Windows cost a lot of money.", "White is the best colour for a house."], "answerIndex": 0, "rationale": "The first paragraph says size is only one reason, and the rest gives other reasons." },
+    { "id": "p-l1-002-q2", "prompt": "What does the writer tell you to do first?", "options": ["Open the curtains", "Buy a new house", "Paint every wall", "Close the windows"], "answerIndex": 0, "rationale": "The last paragraph says to open the curtains first, then paint one wall." },
+    { "id": "p-l1-002-q3", "prompt": "When do walls look far away?", "options": ["When the sun comes in", "When the room is dark", "When the walls are dark", "When the room is full"], "answerIndex": 0, "rationale": "The text says when the sun comes in, the walls look far away." }
+  ]
+}
+]

@@ -1,0 +1,117 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * 配色トークン。
+ * light を既定として :root に置き、dark は .dark クラスでのみ上書きする。
+ * OS 追従（system）は ThemeProvider が .dark の付け外しへ翻訳するので、
+ * ここに prefers-color-scheme を書かない。トークンの定義箇所を 1 つに保つ。
+ */
+:root {
+  --color-bg: 246 248 251;
+  --color-surface: 255 255 255;
+  --color-surface-raised: 255 255 255;
+  --color-border: 224 230 238;
+  --color-fg: 15 23 42;
+  --color-muted: 100 116 139;
+  --color-accent: 37 99 235;
+  --color-accent-fg: 255 255 255;
+  --color-success: 22 163 74;
+  --color-warning: 202 138 4;
+  --color-danger: 220 38 38;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans JP",
+    sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+}
+
+.dark {
+  --color-bg: 11 18 32;
+  --color-surface: 17 26 43;
+  --color-surface-raised: 23 34 54;
+  --color-border: 39 52 76;
+  --color-fg: 226 232 240;
+  --color-muted: 148 163 184;
+  --color-accent: 96 165 250;
+  --color-accent-fg: 8 14 26;
+  --color-success: 74 222 128;
+  --color-warning: 250 204 21;
+  --color-danger: 248 113 113;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+}
+
+html {
+  /* iOS Safari で慣性スクロール中に背景がちらつかないようにする。 */
+  background-color: rgb(var(--color-bg));
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: rgb(var(--color-bg));
+  color: rgb(var(--color-fg));
+  font-family: var(--font-sans);
+  /* iPhone のホーム画面から起動したときのノッチ・ホームバー回避。 */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  min-height: 100dvh;
+}
+
+/* 学習コンテンツ本文は英語の可読性を優先し、行長と行間を広めに取る。 */
+.reading {
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.85;
+  letter-spacing: 0.005em;
+}
+
+.reading p + p {
+  margin-top: 1.15rem;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-surface;
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium
+      transition-colors focus-visible:outline-none focus-visible:ring-2
+      focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg
+      disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-accent text-accent-fg hover:opacity-90;
+  }
+
+  .btn-ghost {
+    @apply btn border border-border bg-surface text-fg hover:bg-surface-raised;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm text-fg
+      placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2
+      focus:ring-accent/30;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised
+      px-2.5 py-1 text-xs font-medium text-muted;
+  }
+}
+
+/* 動きを減らす設定を尊重する。学習中の演出でめまいを起こさせない。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

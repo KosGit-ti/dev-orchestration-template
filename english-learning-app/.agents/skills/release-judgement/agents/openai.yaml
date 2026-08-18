@@ -1,0 +1,4 @@
+interface:
+  display_name: "リリース判定"
+  short_description: "対象headの受入条件と証跡を確認してリリース可否を判定する"
+  default_prompt: "$release-judgement を使い、このPRの対象headをリリースできるか判定してください。"

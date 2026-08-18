@@ -1,0 +1,32 @@
+{
+    "hooks": {
+        "UserPromptSubmit": [
+            {
+                "type": "command",
+                "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/instruction_source_guard.py\"",
+                "timeout": 15
+            }
+        ],
+        "PreToolUse": [
+            {
+                "type": "command",
+                "command": "python3 scripts/hooks/pre_task_complete_guard.py",
+                "timeout": 60
+            }
+        ],
+        "PostToolUse": [
+            {
+                "type": "command",
+                "command": "python3 scripts/hooks/post_push_reminder.py",
+                "timeout": 60
+            }
+        ],
+        "Stop": [
+            {
+                "type": "command",
+                "command": "python3 scripts/hooks/stop_review_guard.py",
+                "timeout": 60
+            }
+        ]
+    }
+}

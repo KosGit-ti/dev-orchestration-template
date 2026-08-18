@@ -1,0 +1,42 @@
+[
+{
+  "id": "p-l2-001",
+  "title": "The Second Cup",
+  "level": 2,
+  "genre": "narrative",
+  "text": "Daniel had been drinking four cups of coffee a day for six years. He did not think it was a problem until his doctor asked a simple question: \"How well do you sleep?\"\n\nHe could not answer. He fell asleep late, woke early, and felt tired all day. The doctor did not tell him to stop. She only {{1}} that he keep his last cup before two o'clock.\n\nThe first week was hard. By four in the afternoon his head hurt and he wanted to give up. But he noticed something in the second week. He was falling asleep before midnight.\n\nHe still drinks coffee. He just stops earlier. Small changes are easier to keep than big ones, and a change you keep is worth more than a change you {{2}}.",
+  "glossary": [
+    { "headword": "give up", "definition": "to stop trying to do something" },
+    { "headword": "worth", "definition": "having a certain value or use" }
+  ],
+  "clozes": [
+    { "id": "p-l2-001-c1", "answer": "suggested", "options": ["suggested", "repeated", "failed", "arrived"], "hint": "she offered an idea for him to think about" },
+    { "id": "p-l2-001-c2", "answer": "fail", "options": ["fail", "manage", "prepare", "notice"], "hint": "the opposite of succeed" }
+  ],
+  "questions": [
+    { "id": "p-l2-001-q1", "prompt": "What did the doctor actually ask Daniel to do?", "options": ["Drink his last coffee before two o'clock", "Stop drinking coffee completely", "Sleep before midnight every night", "Visit her again in a week"], "answerIndex": 0, "rationale": "The text says she did not tell him to stop, only to keep his last cup before two." },
+    { "id": "p-l2-001-q2", "prompt": "What happened in the second week?", "options": ["He began falling asleep before midnight.", "His headaches got worse.", "He went back to four cups.", "He stopped seeing the doctor."], "answerIndex": 0, "rationale": "The third paragraph states he noticed he was falling asleep before midnight." },
+    { "id": "p-l2-001-q3", "prompt": "What point does the last paragraph make?", "options": ["A change you can keep is more useful than a big change you cannot.", "Coffee is bad for everyone.", "Doctors should give stronger advice.", "Sleeping early is the only way to feel rested."], "answerIndex": 0, "rationale": "The final sentence compares a change you keep with a change you fail." }
+  ]
+},
+{
+  "id": "p-l2-002",
+  "title": "Why Maps Lie",
+  "level": 2,
+  "genre": "expository",
+  "text": "The Earth is round. A map is flat. You cannot make a round thing flat without changing it, so every world map is wrong in some way. The question is not whether a map lies, but which lie it chooses.\n\nOne common map keeps the shapes of countries {{1}} but makes the ones far from the equator look much larger than they are. On that map, Greenland looks about the same size as Africa. In fact Africa is fourteen times larger.\n\nAnother map keeps the sizes correct but bends the shapes near the edges. Neither map is better in every case. A sailor and a student do not need the same map.\n\nSo when you look at a map, it helps to ask what the mapmaker decided to {{2}}. Every map answers that question, though it rarely says so out loud.",
+  "glossary": [
+    { "headword": "equator", "definition": "the imaginary line around the middle of the Earth" },
+    { "headword": "bend", "definition": "to change the shape of something so it is no longer straight" }
+  ],
+  "clozes": [
+    { "id": "p-l2-002-c1", "answer": "similar", "options": ["similar", "familiar", "common", "whole"], "hint": "almost the same as the real shape" },
+    { "id": "p-l2-002-c2", "answer": "reduce", "options": ["reduce", "repeat", "introduce", "expect"], "hint": "to make something smaller or give up some of it" }
+  ],
+  "questions": [
+    { "id": "p-l2-002-q1", "prompt": "Why does the writer say every world map is wrong?", "options": ["A round surface cannot be shown flat without change.", "Mapmakers are careless.", "Countries move over time.", "Maps are printed too small."], "answerIndex": 0, "rationale": "The first paragraph gives the round-to-flat problem as the reason." },
+    { "id": "p-l2-002-q2", "prompt": "What does the Greenland example show?", "options": ["A map can distort size while keeping shape.", "Greenland is bigger than Africa.", "Africa is hard to draw.", "Old maps were more accurate."], "answerIndex": 0, "rationale": "The map keeps shapes similar but makes distant countries look far larger than they are." },
+    { "id": "p-l2-002-q3", "prompt": "What does the writer advise readers to do?", "options": ["Ask what the mapmaker chose to give up.", "Use only one kind of map.", "Avoid maps of the whole world.", "Trust maps made by sailors."], "answerIndex": 0, "rationale": "The last paragraph tells readers to ask what the mapmaker decided to reduce." }
+  ]
+}
+]

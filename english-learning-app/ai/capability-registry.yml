@@ -1,0 +1,153 @@
+# AI capability と runtime routing の正本（N-613 / ADR-0023）。
+# active policy は版付き provider model ID を保持しない。実際に解決された runtime 情報は
+# review / audit / ledger 等の実行証跡へ記録し、このファイルへ lock として戻さない。
+
+schema_version: 2
+registry_name: english-learning-app-capability-registry
+
+provider_roles:
+  implementation_harnesses:
+    - claude_code
+    - codex
+  copilot:
+    roles:
+      - pr_review
+  review:
+    accepted_review_providers:
+      - copilot
+      - claude
+      - codex
+    auto_trigger_pr_review_providers:
+      - copilot
+    fallback_review_providers:
+      - claude
+    contract: >
+      accepted は schema / context / head を gate v1 が検証できる証跡の受理集合であり、
+      auto_trigger ではない。independence は review-change / release-judgement 手順で確認する。
+      Codex の有効な証跡は受理するが、自動 executor へ追加しない。
+
+routing_contract:
+  required_fields:
+    - work_class
+    - risk_tier
+    - capability_floor
+    - effort
+    - tool_profile
+    - independence
+    - budget_strategy
+    - escalation_conditions
+    - fallback
+    - resolved_runtime
+  values:
+    work_class: [exploration, implementation, test, review, release]
+    risk_tier: [green, yellow, red]
+    capability_floor: [light, standard, high, top]
+    effort: [low, medium, high, inherit]
+    tool_profile: [read-only, bounded-write, inherited]
+    independence: [same-context, separate-context, separate-model-family, separate-provider]
+    budget_strategy: [cheap-first, single-strong, dual-check]
+  default_profiles:
+    exploration:
+      capability_floor: light
+      effort: low
+      tool_profile: read-only
+      independence: same-context
+      budget_strategy: cheap-first
+    implementation:
+      capability_floor: standard
+      effort: medium
+      tool_profile: bounded-write
+      independence: same-context
+      budget_strategy: cheap-first
+    green_review:
+      capability_floor: standard
+      effort: medium
+      tool_profile: read-only
+      independence: separate-context
+      budget_strategy: single-strong
+    yellow_red_review:
+      capability_floor: high
+      effort: high
+      tool_profile: read-only
+      independence: separate-provider
+      budget_strategy: dual-check
+    release:
+      capability_floor: high
+      effort: high
+      tool_profile: read-only
+      independence: separate-context
+      budget_strategy: single-strong
+  escalation_conditions:
+    - test_or_static_check_failure
+    - material_specification_ambiguity
+    - repeated_failure
+    - risk_tier_increase
+    - security_or_release_boundary
+  fallback_rule: >
+    capability floor または independence を満たせない場合は scope を縮小し、未検証範囲と
+    理由を decision / review evidence に記録する。品質床を満たさないまま成功扱いにしない。
+  resolved_runtime_schema:
+    fields: [provider, model, effort, selection_reason, token_or_cost, outcome]
+    unknown_rule: >
+      provider が model、token、価格を公開しない場合は unknown と記録し、推測で補完しない。
+  optimization_claim: >
+    native auto selection が常に世界最安・最高性能、または本 repo に最適であるとは保証しない。
+    cheap-first で十分な最小 floor から始め、観測した失敗または risk 上昇時だけ昇格する。
+
+capabilities:
+  test-change:
+    canonical_skill: .agents/skills/test-change/SKILL.md
+    responsibilities: [test_design, test_execution, boundary_and_regression_evidence]
+  review-change:
+    canonical_skill: .agents/skills/review-change/SKILL.md
+    lenses: [spec, security, reliability, test_quality, documentation_coherence]
+    green_execution: combined_lenses_in_one_independent_context
+    yellow_red_execution: isolated_context_or_separate_provider
+    security_floor: threat_design_requires_high_capability
+  release-judgement:
+    canonical_skill: .agents/skills/release-judgement/SKILL.md
+    responsibilities: [same_head_acceptance_check, ci_and_review_integration, merge_decision]
+    compatibility_wire_marker: release-manager-decision:v1
+
+native_orchestration:
+  rule: >
+    各 harness の native subagent / dynamic workflow / team 機構を availability と task shape に
+    応じて使う。特定機能を一律禁止または必須化せず、focused task は native subagent、
+    直接相互連絡や共有 task list が必要な場合は team 型を選べる。
+  harnesses:
+    claude_code: [native_subagent, dynamic_workflow, agent_teams_when_available]
+    codex: [native_subagent, runtime_model_and_effort_resolution]
+  cross_provider_advice:
+    skill: agmsg
+    trigger_conditions:
+      - material_ambiguity
+      - provider_specific_feature_uncertainty
+      - competing_approaches_need_comparison
+      - repeated_same_failure
+    not_for: [routine_implementation, formatting, routine_test, routine_review]
+    trust_boundary: P-066
+    formal_review_auto_promotion: false
+
+runtime_profile_exceptions:
+  allowed_only_if: profile_enforces_a_real_permission_or_isolation_boundary
+  required_metadata: [reason, owner, retirement_condition]
+  active_profiles: []
+
+model_abstraction:
+  allowed_active_selectors:
+    - official_provider_alias
+    - inherit
+    - native_auto
+    - capability_floor
+    - reasoning_effort
+  forbidden_active_state:
+    - versioned_provider_model_id
+    - generated_business_role_roster_model_frontmatter
+  historical_evidence_exclusions:
+    - docs/ai/reviews/**
+    - docs/ai/pre-pr-reviews/**
+    - docs/ai/*-ledger.md
+    - docs/audits/**
+    - docs/archive/**
+    - docs/research/**
+    - completed_specs_and_adrs

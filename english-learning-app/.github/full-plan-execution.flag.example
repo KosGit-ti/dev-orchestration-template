@@ -1,0 +1,30 @@
+{
+  "mode": "full-plan-execution",
+  "trigger": "プランをすべて実施して（2026-04-09 ユーザー指示）",
+  "description": "このフラグが存在する間、エージェントは1タスク完了後も必ず次タスクへ自動的に進み続けること。コンテキスト圧縮後も全プラン実施モードは継続している。",
+  "completed_tasks": ["T-001","T-011","T-020","T-021","T-022","T-023","T-030","T-031","T-032","T-040","T-041","T-042","T-050","T-051","T-043","T-052","T-060","T-060-verify","T-061","T-070","T-080","T-090","T-110","T-111","T-112","T-120","T-121"],
+  "remaining_tasks": ["T-122", "T-130", "T-100"],
+  "next_task": "T-122",
+  "next_task_description": "エンドツーエンド動画パイプライン（取得→前処理→検出→姿勢推定→分析→エンベディング 一気通貫オーケストレーター）",
+  "next_task_depends_on": ["T-120", "T-121", "T-090"],
+  "current_pr": null,
+  "last_merged_pr": null,
+  "delivery": {
+    "changes_committed_and_pushed": false,
+    "pr_created": false,
+    "push_review_loop_completed": false,
+    "ci_final_gate_passed": false,
+    "release_manager_approved": false,
+    "merged_to_main": false,
+    "main_pulled_after_merge": false,
+    "plan_updated_after_merge": false,
+    "execution_ledger_updated_after_merge": false
+  },
+  "instructions": [
+    "1. PR #70（T-121）がマージ未完了の場合は先にマージを完了し、plan.md を更新せよ",
+    "2. T-122 の Issue を作成し、フィーチャーブランチを作成して実装を開始せよ",
+    "3. 実装→テスト→監査→PR作成→CI→Copilotレビュー→マージ のパイプラインを完走せよ",
+    "4. T-122 完了後は T-130 へ進め。T-130 完了後は T-100 へ進め",
+    "5. 全タスク（T-122/T-130/T-100）完了まで停止しない"
+  ]
+}

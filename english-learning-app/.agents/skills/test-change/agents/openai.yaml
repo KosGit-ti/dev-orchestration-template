@@ -1,0 +1,4 @@
+interface:
+  display_name: "変更テスト"
+  short_description: "変更リスクに応じてテストを設計、実行し、証跡を整理する"
+  default_prompt: "$test-change を使い、この変更に必要なテストを実行して証跡をまとめてください。"

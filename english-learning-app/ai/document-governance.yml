@@ -1,0 +1,173 @@
+schema_version: 1
+classes:
+  CORE_CONTROL:
+    read_every_session: true
+    examples:
+      - ai/command-router.yml
+      - ai/operation-policy.yml
+      - ai/context-index.yml
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+  AGENT_SPECIFIC:
+    read_by_tool: true
+    keep_short: true
+    examples:
+      - AGENTS.md
+      - CLAUDE.md
+      - .github/copilot-instructions.md
+  DOMAIN_SSOT:
+    read_when_relevant: true
+    examples:
+      - docs/requirements.md
+      - docs/design.md
+      - docs/policies.md
+      - docs/constraints.md
+      - docs/runbook.md
+  TASK_SPEC:
+    read_when_task_selected: true
+    examples:
+      - docs/specs/*.md
+  REFERENCE:
+    read_every_session: false
+    examples:
+      - docs/research/**
+      - docs/adr/**
+  ARCHIVE:
+    read_every_session: false
+    examples:
+      - docs/archive/**
+  GENERATED:
+    keep_out_of_git_by_default: true
+  DELETE_CANDIDATE:
+    require_summary_before_delete: true
+
+rules:
+  do_not_delete_on_first_inventory: true
+  prefer_archive_over_delete_initially: true
+  entrypoint_docs_should_delegate_to_ai_yml: true
+  avoid_feature_specific_content_in_core_control: true
+  version_history_belongs_in: docs/ai/change-log.md
+
+# 台帳・plan の archive 統治（文書再構成 PR-2 で正本化）。
+# PR #1220（2026-08-03 文書再構成 PR-1）と N-595 履歴移設の実績基準を規則へ昇格する。
+archive_governance:
+  archive_dir: docs/archive/
+  applies_to:
+    - docs/plan.md
+    - docs/ai/execution-ledger.md
+    - docs/ai/decision-ledger.md
+  triggers:
+    size_threshold:
+      target: docs/plan.md
+      baseline_file: docs/ai/plan-md-size-baseline.json
+      rule: >
+        docs/plan.md の実バイト数が baseline_bytes を超えたら、まず完了済み履歴を
+        docs/archive/ へ移設して baseline 以下へ戻す。現行計画の正当な成長だけを
+        baseline 引き上げ（同一 PR 内・reason への理由追記必須）で扱う。機械検証は
+        scripts/ai/validate_traceability.py の check_plan_size_nonregression。
+    completion_markers:
+      rule: >
+        明示的完了マーカーを持ち、同一ブロック内にタスク本体が未完了であることを
+        示す記述を含まないブロックだけを移設対象とする。初出の判定基準は
+        docs/archive/plan-next-closeouts-2026H2.md 冒頭 blockquote（N-595 PR-3）。
+        follow-up として Backlog-N* ID 付き残作業に言及するだけのブロックは、
+        当該 ID が能動「## Backlog」節で独立追跡されていることを条件に対象とする。
+      patterns:
+        - "達成済みゴール行（打ち消し線＋✅。ただし G18 のゴール項目行は
+          scripts/hooks/full_plan_completion.py の在圏判定対象のため移設しない）"
+        - "「## Backlog」の取り消し線＋✅ の消化済みエントリ"
+        - "前月以前に closeout 済みの「## Next」タスク本文
+          （例: 2026-08 の移設では 2026-07 以前の closeout が対象）"
+        - "decision-ledger の H3 見出し形式の旧 DEC エントリ"
+  procedure:
+    - "移設先ファイルの冒頭に blockquote ヘッダを置く。移設元ファイル・移設日
+      （または PR／branch）・「ADR-0003・削除せず保全」・「以後更新しない」・
+      現行文書への相対リンクを含める（書式は既存 docs/archive/plan-*.md に合わせる）"
+    - "移設元には移設先への相対リンク付きポインタを残し、N-xxx／FR-xxx／Backlog-*
+      ID の docs/plan.md 在圏を維持する（scripts/ai/validate_traceability.py の
+      在圏検査と scripts/ai/check_coherence_drift.py の drift 検査の対象）"
+    - "docs/plan.md からの移設では docs/ai/plan-md-size-baseline.json の
+      baseline_bytes を rebase 後実測基準へ同一 PR 内で引き下げ、reason へ
+      引き下げ理由を追記する"
+    - "削除しない（ADR-0003 の残置要件は「削除しない保全」であり、アーカイブ移設
+      ＋本文中の ID・ポインタ維持で充足する）"
+  split_forbidden:
+    rule: >
+      以下は機械検証・SHA 凍結・hook 解析の対象であり、分割・改名・移設・
+      必須フレーズの除去をしない。変更が必要な場合は、検証側スクリプトの改修と
+      同一 PR で行い、両者の整合をローカルで実測してから push する。
+    items:
+      - target: docs/ai/research-ledger.md
+        locked_by: >
+          測定スクリプト（scripts/evaluate_*_wfv.py 系）が prereg commit SHA で
+          git show <sha>:docs/ai/research-ledger.md を参照する（SHA 凍結。
+          パス変更・分割は過去 prereg の再現検証を壊す）
+      - target: docs/ai/execution-ledger.md と docs/ai/decision-ledger.md のパス
+        locked_by: >
+          compact 復旧経路（ai/operation-policy.yml の compact_survival_contract）
+          と scripts/ai/validate_harness_ready.py がパスを固定参照する
+          （履歴の archive 移設は可・パス自体の改名/分割は不可）
+      - target: docs/plan.md の H2 見出し 6 個（現状（Status）／今月のゴール／
+          Next（自動実行対象：優先順）／Backlog／成果証跡／Done）と「## Next」節の形式
+        locked_by: >
+          scripts/hooks/full_plan_completion.py 等が機械解析する
+          （plan.md 冒頭「運用ルール」節の宣言と同内容）
+      - target: docs/plan.md の G18 ゴール項目行
+        locked_by: >
+          scripts/hooks/full_plan_completion.py の在圏判定
+          （移設すると健康チェックが非在圏 skip になる）
+      - target: docs/plan.md の N-585〜N-596 ほか能動タスク ID の在圏
+        locked_by: >
+          scripts/ai/validate_traceability.py check_plan_in_scope が
+          単語境界一致で照合する（closeout 本文の移設時も ID 言及を残す）
+      - target: docs/design.md と docs/requirements.md の単一ファイル性
+        locked_by: >
+          scripts/validate_doc_linkage.py と scripts/ai/check_coherence_drift.py
+          が docs/design.md・docs/requirements.md の単一パスを走査する
+          （分割は両スクリプトの glob 拡張とセットの red/yellow 作業＝
+          Backlog-N595-design-requirements-split）
+      - target: docs/architecture.md・docs/constraints.md・
+          docs/audits/audit-materialization-report-2026-07-30.md の必須フレーズ
+        locked_by: >
+          scripts/ai/validate_oae_audit_materialization.py が必須リテラル
+          （CREDENTIAL_BOUNDARY_REQUIREMENTS 等）を検査する
+      - target: mkdocs.yml nav の 9 ファイル（index.md・requirements.md・
+          design.md・architecture.md・policies.md・constraints.md・plan.md・
+          runbook.md・adr/README.md）の docs/ 直下実在
+        locked_by: >
+          scripts/check_docs_nav.py（--config mkdocs.yml）と
+          tests/test_docs_nav.py が実在と nav 在圏を検査する
+
+# plan.md の Next／Backlog エントリ書式規約（文書再構成 PR-3・2026-08 文書軽量化 wave 3
+# で正本化）。archive_governance が「移設のトリガ・手順」を定めるのに対し、本節は
+# 「エントリ 1 件あたりの上限行数」という書式そのものを規約化する。個別の移設判断を
+# 都度人手で下すのではなく、上限超過を機械検出して archive_governance の移設手順へ
+# 誘導することで、書式の野放しに起因する再肥大（Backlog 54%・131KB、Next 28%・68KB、
+# 2026-08-07 実測）を構造的に防ぐ。
+plan_entry_length:
+  next_section_heading: "Next（自動実行対象：優先順）"
+  backlog_section_heading: "Backlog"
+  # 実測: 2026-08-07 移設後の Next 最大エントリは 10 行、Backlog 最大エントリは 2 行。
+  # 上限は実測値に余裕を持たせた値であり、恒久固定ではなく再肥大時は archive_governance
+  # の手順で本文を移設し、上限内へ戻す（上限自体の引き上げは baseline 引き上げと同様に
+  # 同一 PR 内で理由を明記する）。
+  next_entry_max_lines: 12
+  backlog_entry_max_lines: 3
+  rule: >
+    Next の 1 タスクエントリ（`### ` 見出し〜次の `### ` 見出し直前まで。見出しは
+    `### N-xxx` に限らず任意の H3 を対象とする）は next_entry_max_lines 行以内に
+    収める。エントリ本体は「何を（1 行要約）／なぜ今（1〜2 行）／完了条件（AC への
+    リンク）／詳細への導線（spec／design／closeout 証跡へのリンク）」の 4 点に限り、
+    経緯・SHA 羅列・rebase の顛末・correction event の説明は書かず
+    docs/archive/plan-next-detail-2026-08.md 等へ移設してリンクする。
+    Backlog の 1 生存エントリ（`- **Backlog-XXX**...` / `- ~~**Backlog-XXX**~~...`
+    bullet 〜次の bullet／見出し直前まで）は backlog_entry_max_lines 行以内（実質 1
+    行）に収め、長い背景説明は docs/archive/plan-backlog-detail-2026-08.md 等へ
+    移設してリンクする。解決済み・supersede 済み・moot なエントリは削除せず
+    docs/archive/ へ移設する（ADR-0003 の保全原則。archive_governance と同じ）。
+    旧形式の `### B-nnn` 見出しエントリ（B-390／B-373／B-378 の 3 件・2026-07-02 に
+    旧 Next から `## Backlog` へ移設）は、`- B-\d+` bullet 形式へ揃えると
+    scripts/hooks/full_plan_completion.py の `_has_active_auto_backlog_task`
+    （`- B-\d+` を「Next 昇格待ちの自動実行対象」として検出する契約）と衝突するため、
+    見出し形式のまま残し本検査（backlog_entry_max_lines）の対象外とする。
+  validator: scripts/ai/validate_plan_entry_length.py

@@ -1,0 +1,559 @@
+schema_version: 2
+purpose: >
+  自己改善制御ループ（FR-172-2・N-599）の状態機械・entry スキーマ・昇格条件・安全床を
+  機械可読な正本として定義する。findings（レビュー指摘・監査所見・インシデント・
+  release judgement 指摘）を Root Cause → Recurrence Class → Improvement Candidate →
+  昇格 → 効果測定 → Retain/Revise/Retire まで運ぶための唯一の正本。entry の実体は
+  N-601 移行前は `docs/ai/improvement-ledger.md`（append-only）へ記録し、移行後は
+  `ai/improvement-ledger.yml` を機械可読な entry 正本、Markdown を生成 view とする。
+
+references:
+  requirement: docs/requirements.md#FR-172-2
+  safety_floor_requirement: docs/requirements.md#NFR-070
+  spec: docs/specs/N-599-self-improvement-policy-ledger.md
+  umbrella_spec: docs/specs/N-597-self-improvement-control-loop.md
+  ledger: docs/ai/improvement-ledger.md
+  legacy_ledger: docs/ai/improvement-ledger.md
+  target_ledger: ai/improvement-ledger.yml
+  generated_ledger_view: docs/ai/improvement-ledger.md
+  decision: docs/ai/decision-ledger.md#DEC-20260729-002
+  decision_20260812: docs/ai/decision-ledger.md#DEC-20260812-001
+  materialization_20260812: docs/audits/audit-materialization-report-2026-08-12.md
+  recurrence_spec: docs/specs/N-601-recurrence-analyzer-ledger-validator.md
+  effectiveness_spec: docs/specs/N-603-effectiveness-metrics.md
+
+schema_migration:
+  current_phase: pre_n601_manual
+  legacy_source: docs/ai/improvement-ledger.md
+  target_source: ai/improvement-ledger.yml
+  generated_view: docs/ai/improvement-ledger.md
+  compatibility: >
+    N-601 の migration が pass するまでは Markdown が entry 正本である。移行時に IMP-001 以降を
+    immutable raw snapshot と承認済み `docs/ai/improvement-ledger-migration-v1.yml` に束縛してbackfillする。
+    legacyの不正transitionやtarget必須field欠損は、source field、補完根拠、target transition、承認者、
+    独立review evidenceをmappingへ記録できる場合だけ正規化する。gapが1件でもあれば切替を停止する。
+    移行完了後はMarkdownへの直接編集を拒否する。
+
+schema_authority:
+  pre_n601:
+    authoritative_store: docs/ai/improvement-ledger.md
+    accepted_shape_key: entry_schema
+    shape: N-599 legacy Markdown flat fields
+    generated_view: false
+    valid_until: N-601 migration の acceptance と正本切替が完了するまで
+  post_n601:
+    authoritative_store: ai/improvement-ledger.yml
+    accepted_shape_key: target_entry_schema
+    file_shape_key: target_ledger_schema
+    shape: N-601 machine-readable nested objects
+    generated_view: docs/ai/improvement-ledger.md
+    activation_condition: >
+      N-601 migration report、target schema validator、Markdown 冪等生成、独立 review が pass し、
+      同じ変更で schema_migration.current_phase を post_n601_machine に更新した時点。
+  no_dual_authority: >
+    pre_n601 と post_n601 を同時に正本扱いしない。post_n601 では entry_schema を validator の
+    入力 schema に使わず、generated Markdown への直接編集と Markdown から YAML への逆同期を拒否する。
+
+# --- N-601 移行後の file/entry schema。docs/specs/N-601-* §Ledger Schema と同一 shape ---
+target_ledger_schema:
+  schema_version:
+    type: integer
+    const: 1
+  generated_markdown:
+    type: string
+    const: docs/ai/improvement-ledger.md
+  entries:
+    type: list[object]
+    item_schema: target_entry_schema
+
+target_schema_rules:
+  required_entry_fields:
+    - id
+    - discovered_at
+    - severity
+    - source_events
+    - finding
+    - direct_cause
+    - root_cause
+    - recurrence_class
+    - affected_surfaces
+    - detection_gap
+    - improvement_candidate
+    - promotion_target
+    - promotion_criteria_met
+    - control_refs
+    - status
+    - status_history
+    - effectiveness_metric
+    - reviewed_at
+    - next_review_at
+    - implementation_ref
+    - verification_method
+    - rollback_ref
+    - residual_risk
+    - migration_ref
+  reject_unknown_entry_fields: true
+  nullable_fields: [next_review_at, implementation_ref, verification_method, rollback_ref, migration_ref]
+  nested_objects:
+    source_events: list[object]
+    status_history: list[object]
+    effectiveness_metric: object
+  required_nested_fields:
+    source_events:
+      - event_id
+      - source_type
+      - source_ref
+      - observed_at
+      - source_terminal_id
+      - source_terminal_sha256
+      - source_artifact_sha256
+      - normalized_location
+      - parser_id
+      - parser_source_sha256
+      - parser_source_git_oid
+    status_history: [from, to, at, reason, evidence_ref]
+    effectiveness_metric: [metric_id, target]
+
+target_entry_schema:
+  id:
+    type: string
+    format: "IMP-NNN（3 桁ゼロ埋め連番・重複不可）"
+  discovered_at:
+    type: date
+  severity:
+    type: enum
+    values: [critical, high, medium, low]
+  source_events:
+    type: list[object]
+    min_items: 1
+    item_schema:
+      event_id:
+        type: string
+        unique_across_ledger: true
+      source_type:
+        type: enum
+        values: [review, audit, incident, rm, ci, research]
+      source_ref:
+        type: string
+      observed_at:
+        type: datetime
+        format: RFC3339
+      source_terminal_id:
+        type: string
+      source_terminal_sha256:
+        type: string
+        format: 64-lower-hex
+      source_artifact_sha256:
+        type: string
+        format: 64-lower-hex
+      normalized_location:
+        type: string
+      parser_id:
+        type: string
+      parser_source_sha256:
+        type: string
+        format: raw-source-file-sha256
+      parser_source_git_oid:
+        type: string
+        format: repository-object-id
+  finding:
+    type: string
+  direct_cause:
+    type: string
+  root_cause:
+    type: string
+  recurrence_class:
+    type: string
+    format: lower-kebab-case
+  affected_surfaces:
+    type: list[string]
+  detection_gap:
+    type: string
+  improvement_candidate:
+    type: string
+  promotion_target:
+    type: enum
+    values: [policy, skill, agent, validator, ci, schema, runbook, none]
+  promotion_criteria_met:
+    type: list[string]
+  control_refs:
+    type: list[string]
+  status:
+    type: enum
+    values: [open, promoted, measuring, retained, revised, retired, rejected_with_reason]
+  status_history:
+    type: list[object]
+    min_items: 1
+    item_schema:
+      from:
+        type: [enum, "null"]
+        values: [open, promoted, measuring, retained, revised, retired, rejected_with_reason]
+      to:
+        type: enum
+        values: [open, promoted, measuring, retained, revised, retired, rejected_with_reason]
+      at:
+        type: datetime
+        format: RFC3339
+      reason:
+        type: string
+      evidence_ref:
+        type: string
+  effectiveness_metric:
+    type: object
+    properties:
+      metric_id:
+        type: string
+      target:
+        type: string
+        format: machine-comparable-condition
+  reviewed_at:
+    type: date
+  next_review_at:
+    type: [date, "null"]
+    status_rule: >
+      open/promoted/measuring/retained/revised は reviewed_at から30日以内のdateを必須とする。
+      retired/rejected_with_reason は null を許すが、新しいsource eventで再評価を始めるときは
+      同じ更新で30日以内のdateを再設定する。
+  implementation_ref:
+    type: [string, "null"]
+  verification_method:
+    type: [string, "null"]
+  rollback_ref:
+    type: [string, "null"]
+  residual_risk:
+    type: string
+  migration_ref:
+    type: [string, "null"]
+    description: >
+      legacy entry は承認済みの一回限り migration mapping artifact を必須とする。
+      post-N-601で新規作成したentryはnull。
+
+# --- N-599 as-built 互換 schema。pre_n601 Markdown だけに適用する flat fields ---
+# required_after 注記は migration gap の棚卸し情報であり、post_n601 validator の shape ではない。
+entry_schema:
+  id:
+    type: string
+    format: "IMP-NNN（3 桁ゼロ埋め連番・重複不可）"
+  discovered_at:
+    type: date
+    description: finding を検知した日（ISO8601 date）
+  source:
+    type: enum
+    values: [review, audit, incident, rm]
+    description: >
+      N-599 as-builtの起票契機。review=accepted AI review（通常 Copilot、fallback Claude、
+      明示実行 Codex）Round 3 後の
+      非ブロッキング Must/Should を Backlog 化する時点、audit=外部/独立監査の受領時点、
+      incident=障害・CI failure・データ破損等の検知時点、rm=独立した release judgement
+      指摘時点。N-601移行後の広いtriggerは下段entry_triggersを正本とし、このlegacy説明を使わない。
+  finding:
+    type: string
+    description: 検知した事象そのものの記述（何が起きたか）。
+  root_cause:
+    type: string
+    description: 直接原因ではなく構造的な根本原因の記述。
+  recurrence_class:
+    type: string
+    description: >
+      再発分類ラベル（kebab-case 推奨）。同一ラベルを持つ entry を
+      legacy Markdown から手作業で照合する。N-601 移行後の source event と occurrence は
+      target_entry_schema.source_events を使い、この flat schema から導出しない。
+  detection_gap:
+    type: string
+    description: なぜ検知が遅れた・繰り返した・機械検知できなかったかの構造的ギャップ。
+  improvement_candidate:
+    type: string
+    description: 改善候補（恒久対策）の記述。
+  promotion_target:
+    type: enum
+    values: [policy, skill, agent, validator, ci, none]
+    description: 改善候補の昇格先。none は「昇格候補なし・様子見」を明示する値。
+  status:
+    type: enum
+    values: [open, promoted, measuring, retained, revised, retired, rejected_with_reason]
+    description: >
+      最低限必須の 6 状態（open/promoted/measuring/retained/revised/retired）に加え、
+      FR-172-2 の canonical 状態機械（下記 fr_172_2_mapping 参照）との整合のため
+      rejected_with_reason を拡張状態として持つ（open のまま昇格させないと判定した
+      finding の終端状態。理由を finding/root_cause 欄へ記録したうえで使う）。
+  status_history:
+    type: string
+    description: >
+      任意だが強く推奨。「state(YYYY-MM-DD) → state(YYYY-MM-DD) → …」形式で状態遷移を
+      時系列で記録する。G59（`docs/plan.md`「## 今月のゴール」）が要求する
+      「findings が状態遷移を伴って記録される」の充足手段。ledger が append-only の
+      ため、遷移のたびに該当 entry の本フィールドへ追記する（entry 全体の書き換えは
+      新しい遷移の追記に限る。finding 等の事実記述は事後改変しない＝P-003）。
+  improvement_candidate_promotion_criteria_matched:
+    type: string
+    description: >
+      任意。open→promoted へ遷移させた根拠として、下記 promotion_rule.criteria の
+      どの id を満たしたかを記録する（監査可能性のため）。
+  effectiveness_metric:
+    type: string
+    description: 効果測定の指標定義（before/after で何を比較するか。NFR-070 要件6）。
+  reviewed_at:
+    type: date
+    description: 直近レビュー日。closeout 照合・独立監査の都度更新する。
+
+# --- 状態機械 ---
+state_machine:
+  states:
+    - open
+    - promoted
+    - measuring
+    - retained
+    - revised
+    - retired
+    - rejected_with_reason
+  initial: open
+  terminal_without_new_source_event: [retained, retired, rejected_with_reason]
+  transitions:
+    - from: open
+      to: promoted
+      condition: promotion_rule の criteria を 1 つ以上満たす（any-of）。
+    - from: open
+      to: rejected_with_reason
+      condition: promotion_rule のいずれも満たさず、理由付きで不採用と判定した。
+    - from: promoted
+      to: measuring
+      condition: >
+        promotion_target への実装が完了し運用に乗った。NFR-070 要件6・7に基づき、
+        遷移時点で effectiveness_metric（before/after 比較の指標）と rollback 手順を
+        定義済みであること。
+    - from: measuring
+      to: retained
+      condition: >
+        closeout 照合時点で、promoted 化以降に同一 recurrence_class の finding が
+        再発しておらず、effectiveness_metric が改善（before/after）を示す。
+    - from: measuring
+      to: revised
+      condition: >
+        効果不十分・誤検知過多・運用コスト過大のいずれかが closeout 照合で判明した
+        （R-SI-09 相当）。改訂実装後は measuring へ再度遷移する。
+    - from: measuring
+      to: retired
+      condition: 改訂しても効果が見込めない、または対象自体が不要と判定した。
+    - from: revised
+      to: measuring
+      condition: 改訂実装が完了し、再度の効果測定サイクルへ入った。
+    - from: revised
+      to: retired
+      condition: 改訂後も効果が見込めない、または対象自体が不要と独立判定した。
+    - from: retained
+      to: revised
+      condition: 同じ recurrence class の新しい source event、誤検知増加、または陳腐化を確認した。
+    - from: retained
+      to: retired
+      condition: 対象 surface の廃止後、N-604 が依存と安全床を確認して不要と判定した。
+    - from: retired
+      to: revised
+      condition: 同じ recurrence class の新しい source event により control の復活が必要になった。
+    - from: rejected_with_reason
+      to: revised
+      condition: >
+        棄却後に同じ recurrence class の新しい source event が発生し、
+        棄却判断の再評価が必要と判定した。
+
+  # FR-172-2（docs/requirements.md 正本）が明示する canonical 状態機械
+  # 「observed→analyzed→promoted/rejected_with_reason→implemented→verified→
+  # effective/ineffective→retained/revised/retired」との対応関係。本 policy の
+  # 状態機械は NFR-SI-003（測定基盤が整うのは N-603 以降であり、それ以前のタスクへ
+  # 手動集計を課さない＝最小オーバーヘッド）に基づく簡略表現であり、canonical 側の
+  # 意味を破棄しない（同値対応であり削減ではない）。
+  fr_172_2_mapping:
+    observed: open
+    analyzed: open  # root_cause / recurrence_class / detection_gap の充足をもって分析完了とみなす
+    promoted: promoted
+    rejected_with_reason: rejected_with_reason
+    implemented: measuring  # 実装完了直後（効果測定はまだ始まったばかり）
+    verified: measuring     # 運用に乗り効果を観測している最中
+    effective: retained
+    ineffective: revised または retired（closeout 判定で分岐）
+    retained: retained
+    revised: revised
+    retired: retired
+
+# --- N-600 RCA enforcement の導入境界 ---
+rca_enforcement:
+  schema_version: 1
+  status:
+    type: enum
+    values: [planned, advisory, required]
+    current: planned
+  target:
+    base_commit:
+      type: [string, "null"]
+      format: lowercase-40-hex-main-first-parent-commit
+      current: null
+    base_committer_time:
+      type: [datetime, "null"]
+      format: RFC3339-UTC
+      current: null
+  activation:
+    evidence_ref:
+      type: [string, "null"]
+      format: tracked-content-addressed-N-602-evidence-path
+      current: null
+    evidence_raw_sha256:
+      type: [string, "null"]
+      format: lowercase-64-hex
+      current: null
+    evidence_anchor_head:
+      type: derived
+      rule: exact evidence fileが最初に存在するmain first-parent commit
+  activation_contract: >
+    N-600 validatorを実装した既知のadvisory target commitを先に作り、後続のevidence-anchor commitで
+    targetの40桁SHAとcommitter UTC timestamp、N-602 activation evidenceのpathとraw SHAを固定する。
+    activation artifactとpolicyのどちらにも、それら自身を含むanchor commitの未確定SHAを記入しない。
+    evidence_anchor_headはexact evidence fileが最初に存在するmain first-parent commitとして導出する。
+    activation evidenceのtested_headはbase_commitとexact一致し、targetはanchorと同一またはその
+    first-parent祖先でなければならない。
+  comparison_rule: >
+    判定単位はtask IDでなくappend-only N-602 task closeout eventとする。eventの
+    actual_merge_terminal_shaがbase_commit自身、またはbase_commitのfirst-parent子孫なら対象とする。
+    actual terminalがbase_commitの真のfirst-parent祖先なら導入前の歴史的eventとして遡及対象外にする。
+    同じtaskをbase後に再closeしたeventも新しいactual terminalで対象になる。premerge_tested_headを
+    actual terminalの代用にしない。actual terminal／baseのmissing、unknown、diverged、first-parent関係の
+    検証不能はfail-closeし、task IDやspec未変更を免除条件にしない。
+  initial_state_rule: >
+    status=planned、targetの2値とactivationの2値がnullである状態は未実装を表し、免除を一件も
+    許可しない。advisoryまたはrequiredでは全値を原子的に固定し、部分設定を拒否する。
+
+# --- 起票トリガ（NFR-SI-003: 最小限であってもどの工程で必ず起票するか） ---
+entry_triggers:
+  review:
+    when: >
+      accepted AI review（通常 Copilot、fallback Claude、明示実行 Codex）の actionable Must/Shouldを、
+      round番号、同PR内修正、繰延の別を問わずsource event candidateにする。task closeout前に
+      既存entryへlink、新規entry、理由付きrejected_with_reasonのいずれかへ解決する。
+      false positive／non-actionは黙って捨てず、根拠付きrejected_with_reason candidateとして閉じる。
+    note: >
+      既定Round 3後の非ブロッキングMust/ShouldはBacklog IDも作り、ledger entry IDとPR本文を
+      相互参照する。適格な延長roundでも同じcandidateを重複起票しない
+      （`.github/instructions/review-loop.instructions.md` 正本）。
+  audit:
+    when: 外部/独立監査（re-audit を含む）を受領し `docs/ai/decision-ledger.md` に採否 DEC を記録する時点。
+  incident:
+    when: インシデント（障害・CI failure・データ破損・誤書込み等）を検知し是正した時点。
+  rm:
+    when: "`release-judgement` skill が独立検証で指摘した時点（自己承認と区別するため review とは独立に扱う）。"
+  ci:
+    when: required／optional を問わず、同一根本原因の failure、flake、rerun、false-negative、escaped defect を確定した時点。
+  research:
+    when: prereg 監査の訂正、測定器 correctness gate failure、terminal look の中断／訂正、研究結論の撤回を確定した時点。
+  closeout_guard: >
+    task closeout 前に N-601 event extractor の候補を全件 classified／linked／rejected_with_reason の
+    いずれかへ確定する。候補の未処理、source_ref 欠落、既存 recurrence_class の再発を新規 class として
+    分離した状態では closeout しない。
+
+# --- promotion rule（監査 F-04 の推奨昇格条件をそのまま採用） ---
+promotion_rule:
+  source: "F-04（HRAI-REAUDIT-SELFIMPROVEMENT-20260728）"
+  logic: any_of
+  criteria:
+    - id: recurrence_2plus_pr
+      description: 同一 recurrence_class が 2 PR 以上で発生した。
+    - id: safety_or_security
+      description: security / data leakage / live safety に関係する。
+    - id: release_blocker_2x
+      description: release blocker として 2 回発生した。
+    - id: machine_detectable
+      description: 機械検出可能である（validator/CI 化の余地がある）。
+    - id: research_validity
+      description: 研究結果の正当性へ影響する。
+    - id: manual_review_cost_over_threshold
+      description: 人手レビューコストが閾値を超過する。
+    - id: recurring_ci_failure_same_root_cause
+      description: 同一根本原因で CI failure が再発した。
+  none_matched: >
+    open のまま滞留させず、理由（finding/root_cause 欄）を明記して rejected_with_reason
+    へ遷移させる（放置による SSOT drift を防ぐ・R-SI-04）。
+
+# --- 効果測定の周期 ---
+effectiveness_review:
+  cadence: >
+    各改善 task の closeout と、`reviewed_at` から最大 30 暦日の早い方で行う。N-601／N-603
+    実装前は closeout 時の手動照合を継続し、30 日 TTL の機械強制が未実装であることを明示する。
+  pre_n601_method: >
+    legacy 正本 `docs/ai/improvement-ledger.md` を対象 recurrence_class で照合する。再発 event は
+    Markdown entry へ append し、現在 status から state_machine.transitions が許す遷移だけを記録する。
+  post_n601_method: >
+    `ai/improvement-ledger.yml` の source_events を event_id で重複排除して集計する。open／promoted は
+    event 追加後に promotion criteria を再評価する。measuring／retained は revised へ遷移する。
+    revised は status を維持して follow-up を更新し、retired／rejected_with_reason は state machine が
+    許す場合だけ revised へ遷移する。存在しない open→revised、promoted→revised、revised→revised を
+    status_history に書かない。再発がなく effectiveness_metric が改善した measuring だけを retained とする。
+  next_review_by_status: >
+    open／promoted／measuring／retained／revised は reviewed_at から30日以内のnext_review_atを必須とする。
+    retired／rejected_with_reason はnullを許すが、新しいsource eventによる再評価開始時は同じ更新で
+    30日以内の日付を再設定する。
+  required_metrics:
+    - first_pass_acceptance
+    - escaped_findings
+    - rework_rounds
+    - lead_time
+    - human_interventions
+    - false_positives
+    - cost_proxy
+    - fallback_outcome
+  expiry_rule: >
+    measuring または revised が 30 暦日を超え、客観指標も next_review_at の更新理由もない場合は
+    retained にせず fail-close とし、N-604 で Revise または Retire を判定する。
+
+# --- governance safety floor（NFR-070。本 policy 自身・本 policy による改修が弱めてはならない） ---
+safety_floor:
+  invariants:
+    - id: no_completion_criteria_relaxation
+      rule: NFR-070 要件1。各 spec の受入条件（Definition of Done）を自己改善によって緩和しない。
+    - id: no_self_approval_of_independent_review
+      rule: >
+        NFR-070 要件2・8。peer review／release judgement による独立検証を自己承認へ
+        置換しない。Policy/Skill/Agent/Validator/CI/Runbook の改修は governance change
+        として独立監査を経る（改善の提案者・実装者が有効性判定を単独で承認しない）。
+    - id: no_safety_hard_block_change
+      rule: >
+        NFR-070 要件3。認証バイパス・進捗データの無検証破棄といった安全側 hard block、すなわち
+        `web/lib/auth/**`（認証境界）・学習進捗の破壊的移行を単独承認で変更しない。
+    - id: ci_detection_power_non_regression
+      rule: NFR-070 要件4。required CI 検出力の削減は、同等以上の検出力実証を同一 PR に含める場合に限り認める。
+    - id: user_authority_unchanged
+      rule: NFR-070 要件5・P-066。user intent の権威順位（権威ある指示は人間のみ）を変更しない。
+    - id: before_after_effectiveness_required
+      rule: NFR-070 要件6。Policy/Skill/Agent/Validator/CI/Runbook の改修は導入前後の効果指標と評価日を定義する（本 policy の effectiveness_metric / reviewed_at フィールドで担保）。
+    - id: rollback_required
+      rule: NFR-070 要件7。Policy/Skill/Agent/Validator/CI の改修は rollback 手順を持つ。
+    - id: max_nesting_stop_condition
+      rule: >
+        NFR-070 要件9・R-SI-10。改善タスク自身の stop condition を持つ（governance
+        タスクの無限自己派生・過度な細分化を禁止）。N-597 傘配下の base package ID は
+        N-598、N-599、N-600、N-601、N-602、N-603、N-604 の 7 件で固定する。
+        N-598B／N-598C と N-602A／N-602B は DEC-20260812-001 が認可した既存 base package の
+        phase split であり、8 件目以降の base task ではない。N-594B は FR-171-10／N-594 の
+        phase split で N-597 傘の base package 数に含めない。suffix を使った phase split でも
+        DEC なしに新しい責務を増やしてはならず、新規 base package ID の追加は別 DEC を要する。
+    - id: research_mainline_not_blocked
+      rule: >
+        NFR-070 要件10・R-SI-03。自己改善は研究主線（N-582／R 系）を無期限停止する
+        理由にしない。governance タスクと研究イテレーションは交互に進める。
+        ただし HRAI-REAUDIT-20260812 の P0 証跡真実性、exact current state、最小計算量予約 gate は
+        R-025 freeze の前提であるため先行する。その後は研究と governance task を交互に進める。
+    - id: unrelated_governance_expansion_hold
+      rule: >
+        DEC-20260812-001 の解除条件まで、無関係な OAE、agent、一般 docs 基盤の新規拡張を停止する。
+        security、data corruption、experiment validity、runtime/current-state blocker、P0／P1 は割り込める。
+
+# --- 運用ノート ---
+operational_notes:
+  automation_status: >
+    本 policy・ledger は現時点で CI/hook による強制がない（green tier・
+    `.github/workflows/**` 非接触）。entry の起票・状態遷移・promotion_rule 照合は
+    人手/AI の運用規律に依存する。機械集計・自動昇格・CI 結線は N-601（Review Finding
+    Recurrence Analyzer）・N-602（Evidence Auto-generation）で実装する。red_if_touches に
+    該当する配線は release tier のゲートを通す（`docs/specs/N-597-self-improvement-control-loop.md` §7）。
+  deferred_from_f02: >
+    2026-07-29 時点では affected_surfaces 等を繰延べたが、HRAI-REAUDIT-20260812 で
+    enforcement 不在と event 未登録が再発したため判断を改訂した。N-601 migration 後は
+    affected_surfaces、severity、implementation_ref、verification_method、residual_risk を必須化する。
+    occurrence_count は target ledger の `source_events[].event_id` を重複排除して導出し、
+    owner capability と効果指標は N-603 が生成する。legacy の source 表記から件数を推測しない。

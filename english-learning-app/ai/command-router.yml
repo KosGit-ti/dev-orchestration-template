@@ -1,0 +1,84 @@
+# AI 日常コマンドルーター。
+# このファイルはバージョン名に依存しない安定した制御面である。
+# 特定機能のタスク内容はここへ書かない。
+
+schema_version: 1
+owner: english-learning-app
+purpose: >
+  ユーザーの日常的な短い日本語コマンドを、決定的な AI operating mode へ対応付ける。
+  日常開発のエージェントは docs、plan、code を編集する前に必ずこのファイルで分類する。
+
+commands:
+  revise_and_enqueue:
+    description: >
+      指定された計画項目を見直し、要件と詳細設計を更新し、task spec を作成または更新して、
+      現在の実行キューへ入れる。
+    user_patterns:
+      - ".*のプランを見直して直近のプランに入れてほしい。詳細設計と要件定義もあわせて見直すこと。"
+    operating_context: daily_development
+    workflow: revise_and_enqueue
+    required_policy_files:
+      - ai/operation-policy.yml
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - ai/context-index.yml
+
+  promote_backlog_to_current_queue:
+    description: >
+      Backlog 項目に不足している requirements / design / spec / acceptance criteria /
+      verification / runtime smoke 情報を追加してから、現在の実行キューへ昇格する。
+    user_patterns:
+      - "プランのうちバックログの中身をすべて直近のプランに入れて。"
+    operating_context: daily_development
+    workflow: promote_backlog_to_current_queue
+    required_policy_files:
+      - ai/operation-policy.yml
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - ai/context-index.yml
+
+  execute_current_queue:
+    description: >
+      仕様駆動開発に従い、現在の plan queue を end-to-end で実行する。
+    user_patterns:
+      - "プランの全実施。"
+      - "プランの全実施"
+    operating_context: daily_development
+    workflow: execute_current_queue
+    required_policy_files:
+      - ai/operation-policy.yml
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - ai/context-index.yml
+      - ai/pre-pr-review-policy.yml
+
+  governance_change:
+    description: >
+      リポジトリの operating model、AI harness、branch/release policy、hook policy、
+      documentation governance を変更する。日常開発とは異なり、将来運用に実質的な影響がある
+      場合はユーザーへの質問を許可する。
+    user_patterns:
+      - ".*運用.*見直.*"
+      - ".*ルール.*変更.*"
+      - ".*AI.*ハーネス.*"
+      - ".*文書.*整理.*"
+      - ".*仕様駆動.*運用.*"
+    operating_context: governance_change
+    workflow: governance_change
+    required_policy_files:
+      - ai/operation-policy.yml
+      - ai/context-index.yml
+      - ai/document-governance.yml
+      - ai/sdd-policy.yml
+
+default:
+  # N-435 / ADR-0018: 旧値 classify_with_repository_context を shogun_dispatch へ正式接続
+  # （do_not_create_new_mode_without_governance_update に従う governance 更新）。
+  # commands（日常 3 コマンド + governance_change パターン）の分類が常に先で、default は最後に評価する。
+  # ただし user_patterns に一致しなくても実質 governance_change 相当（運用ルール・policy・hook・
+  # 長期 workflow の変更）と判断した依頼は、shogun_dispatch の
+  # reclassify_governance_change_if_applicable step で governance_change へ再分類する（fail-close）。
+  # steps は ai/coherence-workflow.yml の shogun_dispatch、読込範囲は ai/context-index.yml、
+  # 運用正本は docs/ai/shogun-operating-model.md（N-435b で作成済み）を参照する。
+  on_unmatched_user_request: shogun_dispatch
+  do_not_create_new_mode_without_governance_update: true
