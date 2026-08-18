@@ -1,0 +1,91 @@
+schema_version: 1
+purpose: >
+  PR 作成前にリポジトリ横断の批判レビューを行い、Copilot の Must/Should 相当の指摘を
+  できるだけ事前に解消する。
+
+review_goals:
+  target_copilot_must: 0
+  target_copilot_should: 0_or_documented_reason
+
+review_lenses:
+  spec_consistency:
+    checks:
+      - requirements_design_spec_plan_alignment
+      - acceptance_criteria_covered
+      - non_goals_not_violated
+  doc_coherence:
+    checks:
+      - no_conflicting_control_documents
+      - context_index_points_to_current_sources
+      - no_stale_versioned_setup_docs_in_default_context
+  implementation_completeness:
+    checks:
+      - user_visible_outcome_implemented
+      - no_backend_only_completion_for_ui_task
+      - propagation_to_types_docs_api_if_needed
+  safety_policy:
+    checks:
+      - no_secret_exposure
+      - no_destructive_db_without_red_release_gate
+      - no_live_betting_safety_bypass
+  test_reliability:
+    checks:
+      - tests_assert_behavior_not_only_existence
+      - targeted_tests_match_changed_area
+  runtime_smoke:
+    checks:
+      - runtime_smoke_present_for_user_visible_change
+  copilot_preemptive:
+    checks:
+      - likely_must_should_findings_identified
+      - review_comment_response_plan_if_needed
+  fix_on_discovery:
+    # P-065: 発覚した lint/bug/型/テスト失敗はその場で修正し持ち越さない。
+    checks:
+      - static_checks_clean_ruff_format_mypy
+      - markdown_lint_clean_for_docs_changes  # .markdownlint.json 準拠
+      - no_dismissed_or_deferred_warnings_without_backlog_and_residual_risk
+      - targeted_and_regression_tests_pass
+  mainline_connection:
+    # P-068: 新規 PR は主線 5 系統（N-582/R 系研究・PIT/data 品質・harness/registry・
+    # CI/security・observability）への接続を PR 本文で宣言する。いずれにも接続しない
+    # PR（docs/plan.md ロードマップ「Product / Automation（maintenance-only）」節の
+    # 凍結対象領域の新規拡張を含む）は decision-ledger の明示認可（DEC ID）が必須。
+    checks:
+      - pr_declares_mainline_connection_or_dec_id
+
+outputs:
+  # per-PR パス化（release judgement should-5・PR #1039 での指摘の是正）。
+  # 識別子（既定はブランチ名 slug）ごとに独立したファイルへ出力する。詳細は
+  # docs/ai/pre-pr-reviews/README.md と scripts/ai/run_pre_pr_critical_review.py の
+  # resolve_identifier() を正本とする。
+  report: docs/ai/pre-pr-reviews/<識別子>.md
+  report_dir: docs/ai/pre-pr-reviews/
+  # 旧実装が書いていた単一の共有ファイル。並行 PR での衝突を避けるため削除はせず、
+  # ファイル冒頭に移行済みの注記だけを追記して残置している。以後更新されない。
+  legacy_report_deprecated: docs/ai/pre-pr-critical-review.md
+  machine_readable_optional: outputs/ai/pre-pr-critical-review.json
+  review_report_gate_json:
+    required_when_changed_code_or_policy: true
+    # accepted と auto-trigger は別契約。Codex を受理しても自動起動しない。
+    accepted_paths:
+      - docs/ai/reviews/YYYY-MM-DD-prNNN-claude.json
+      - docs/ai/reviews/YYYY-MM-DD-prNNN-copilot.json
+      - docs/ai/reviews/YYYY-MM-DD-prNNN-codex.json
+    rule: >
+      accepted provider の有効な証跡が 1 つ present なら pass（ANY-OF）。
+      自動 PR review は Copilot、利用不能時の fallback は Claude。Codex は明示実行された
+      schema / context / head 適合証跡だけを受理し、independence は review-change 手順で
+      確認する。Codex を自動 executor に追加しない。
+    role_note: >
+      claude / copilot / codex は provider ID であり固定 agent 名ではない。
+      独立 review の解決は ai/capability-registry.yml と review-change skill を正本とする。
+    generator: scripts/run_ai_review.py --review-report-output
+    validation: scripts/ai/review_report_gate.py --changed-only --accepted-providers copilot,claude,codex
+    claude_provider_policy: >
+      Claude Code の claude provider は CLAUDE_REVIEW_COMMAND（scripts/ai/claude_review_command.py
+      = claude CLI headless / Claude Code セッション自体）で実行し、Anthropic API 課金を要しない
+      非課金経路を既定とする。これは copilot と同等の first-class provider である。
+      Claude Code セッション内ではエージェント自身が同等レビューを実施し review-result 証跡を
+      生成してもよい。ANTHROPIC_API_KEY による Claude API review は別課金になり得るため、
+      AI_REVIEW_ALLOW_CLAUDE_API_BILLING=true を明示した場合だけの opt-in 補助に限る。

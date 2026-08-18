@@ -1,0 +1,9 @@
+.next
+out
+node_modules
+coverage
+
+# 学習データは「1 エントリ 1 行」で保つ。Prettier に展開させると 1 語が約 20 行に
+# なり、追加や修正の diff が読めなくなる。整形の代わりに validate:content が
+# 構造を検査する。
+content/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "変更レビュー"
+  short_description: "仕様、安全性、信頼性の観点で変更をリスク別にレビューする"
+  default_prompt: "$review-change を使い、この変更を仕様、安全性、信頼性の観点でレビューしてください。"

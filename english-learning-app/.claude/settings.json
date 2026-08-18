@@ -1,0 +1,132 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PROJECT_DIR}/.claude/hooks/instruction_source_guard.py\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_agent_guard.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_agent_guard.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_bash_round_guard.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "request_copilot_review",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_bash_round_guard.py",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__github__request_copilot_review",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_bash_round_guard.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/post_bash_reminder.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/stop_review_guard.py",
+            "timeout": 150
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/pre_compact_context.py",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/post_compact_context.py",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/session_start_context.py",
+            "timeout": 20
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/session_start_worktree_prune.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

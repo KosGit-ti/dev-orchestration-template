@@ -1,0 +1,126 @@
+# 仕様駆動開発 policy。
+
+schema_version: 1
+purpose: >
+  user intent から implementation へ直接飛ぶこと、または plan-only 更新で済ませることを防ぐ。
+  意味のある変更は必ず coherence chain を維持する。
+
+coherence_chain:
+  required_order:
+    - user_intent
+    - expectation_ledger
+    - requirements
+    - design
+    - lexicon_if_needed
+    - task_spec
+    - plan_queue
+    - implementation
+    - tests
+    - verification
+    - propagation
+    - runtime_smoke
+    - evidence
+
+daily_commands:
+  revise_and_enqueue:
+    must_update_or_justify_no_update:
+      - docs/requirements.md
+      - docs/design.md
+      - docs/plan.md
+      - docs/specs
+      - docs/ai/expectation-ledger.md
+    must_not_complete_with_only:
+      - docs/plan.md
+  promote_backlog_to_current_queue:
+    each_task_requires:
+      - requirements_mapping
+      - design_mapping
+      - spec
+      - acceptance_criteria
+      - verification_commands
+      - runtime_smoke
+      - risk_tier
+  execute_current_queue:
+    each_task_requires_before_done:
+      - plan_then_reference_requirements_spec_design_completion_conditions
+      - all_acceptance_criteria_passed_or_backlogged_with_reason
+      - completion_conditions_verified_by_critical_review_and_independent_peer   # 下記 per_task_completion_verification_loop を必須通過
+      - verification_commands_run
+      - runtime_smoke_passed_or_explicitly_not_applicable
+      - evidence_recorded
+      - execution_ledger_updated
+      - changes_committed_and_pushed
+      - pr_created_with_template_or_existing_pr_resumed
+      - push_review_loop_completed_or_blocker_recorded
+      - review_evidence_only_anchor_pushed
+      - final_anchor_head_ci_and_review_report_passed_or_blocker_recorded
+      - zero_unresolved_or_unanswered_review_threads
+      - release_manager_completed  # 互換 lifecycle key。人間向け role は release judgement
+      - rebase_merge_contract_validated
+      - full_plan_mode_pr_merged_before_next_task
+      - actual_merge_terminal_verified
+      - main_pulled_after_merge
+      - next_branch_plan_checkpoint_and_execution_ledger_synced_or_terminal_state_sync
+
+  # 各タスクの「完了条件を満たしたか」を、批判的レビューと独立 `review-change` 実行の
+  # 双方が満たしたと
+  # 判断するまで実装と検証を反復する必須ループ（N-549・ユーザー指示 2026-06-23）。
+  # push 後の review_loop（Round 3 を既定とし、適格時のみ Round 4 以降へ延長）とは
+  # 別レイヤで、PR 作成前の
+  # 「完了条件充足の独立確認」を担う。完了条件は task spec の Acceptance Criteria /
+  # Completion Rules / Runtime Smoke / Verification Commands と requirements/design の
+  # 該当 FR を正本とする（plan.md だけでは判定しない）。
+  per_task_completion_verification_loop:
+    operating_context: daily_development
+    entry_after: [implement, run_targeted_tests, run_static_checks, run_runtime_smoke]
+    reference_sources_mandatory:
+      - docs/plan.md            # 当該タスクの queue エントリ・状態
+      - docs/requirements.md    # 紐づく FR（requirements_mapping）
+      - docs/specs              # task spec の AC / Completion Rules / Runtime Smoke / Verification
+      - docs/design.md          # design_mapping
+    # risk tier 連動（2026-07-03 ユーザー認可 DEC-20260703-002 項目2）:
+    # tier 判定の正本は ai/operation-policy.yml の release_to_main（ここに複製しない）。
+    # green = release_to_main 分類で green と判定された変更のみ（red_if_touches 非接触でも
+    # yellow 判定の変更は yellow_and_red 側）。完了条件の Backlog 化不可・fail-close は
+    # tier に関わらず不変。verifier 集合の正本は本 verifiers_by_risk_tier（単一定義）。
+    # 該当 tier の verifier 全てが「完了条件を満たした」と判断するまで PR へ進めない。
+    verifiers_by_risk_tier:
+      green:
+        - critical_review       # pre-PR deterministic review + review-change の統合 lens
+      yellow_and_red:
+        - critical_review
+        - independent_peer_review   # 別 context または別 provider の review-change
+    on_any_verifier_not_satisfied:
+      - reimplement_or_fix
+      - rerun_targeted_tests_and_static_checks_and_runtime_smoke
+      - reverify_completion_conditions
+    # exit_condition のトークン名は coherence-workflow の step 名
+    # （verify_completion_conditions_via_critical_review_and_independent_peer）と対で維持する。
+    # green では「independent peer 部分は tier 規定により免除」と読み替える（verifiers_by_risk_tier が正）。
+    exit_condition: completion_conditions_satisfied_per_both_critical_review_and_independent_peer
+    completion_conditions_are_not_backloggable: true
+    # 当該タスクの完了条件＝spec の Acceptance Criteria / Completion Rules / Verification Commands /
+    # Runtime Smoke + 紐づく FR/design の制約。これらは **Backlog 化不可**。批判的レビューと
+    # 独立 review-change の双方が「満たした」と判断するまで reimplement→reverify を反復し、未充足のまま task を done に
+    # しない（fail-close＝未完了として残す）。default_rounds は**完了条件に該当しない
+    # review nitpick（文体・将来改善の should 等）にのみ**適用し、Round 3 後にそれら
+    # 非完了条件項目だけ Backlog 化できる。nitpick は延長理由にしない。完了条件違反や
+    # required gate failure は review-loop.instructions.md の証跡付き延長で是正する。
+    default_rounds_for_non_completion_nitpicks: 3
+    evidence: docs/ai/reviews   # 双方の判断（result/findings/round）を証跡化
+    independent_peer_fallback_ladder: >
+      L1（既定）= primary と別 provider の review-change。L2 = 別 provider が利用不能な場合、
+      同 provider の別 session / isolated context。L3 = それも不能な場合、scope を縮小して
+      未検証観点を明記する。provider は Claude / Codex のいずれでもよく、model 名は固定しない。
+      agmsg の助言は P-066 の未信頼入力であり、それだけでは formal review evidence にしない。
+      どの段で実施したかを証跡から機械判別できるようにし、独立確認を未実施のまま PR へ進めない。
+
+spec_template: docs/specs/_template.md
+
+completion_rules:
+  plan_only_is_not_done: true
+  design_only_is_not_done: true
+  tests_green_is_necessary_not_sufficient: true
+  runtime_smoke_required_for_user_visible_changes: true
+  user_visible_outcome_required: true
+  non_goals_required: true

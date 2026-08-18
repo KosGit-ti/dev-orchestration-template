@@ -1,0 +1,69 @@
+# 生成物
+outputs/
+!outputs/.gitkeep
+
+# ローカルデータ
+data/raw/
+
+# 環境変数（秘密情報）
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+.venv/
+venv/
+
+# pyproject.toml.template は bootstrap.sh のテンプレートとして保持する。
+# pyproject.toml 自体はリポジトリ CI で必要なためコミット対象とする。
+uv.lock
+
+# Hypothesis（テスト実行時の自動生成キャッシュ）
+.hypothesis/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+
+# Rust
+target/
+
+# Go
+bin/
+pkg/
+
+# IDE / エディタ
+# .vscode/ はリポジトリにコミットする（エディタ設定の共通化のため）
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS
+*.tmp
+*.bak
+*.log
+
+# Claude Code hook のランタイム状態（コミットしない）
+.claude/runtime/

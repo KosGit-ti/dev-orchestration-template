@@ -1,0 +1,205 @@
+schema_version: 1
+workflows:
+  revise_and_enqueue:
+    operating_context: daily_development
+    steps:
+      - load_context_index
+      - capture_original_user_intent
+      - classify_intent
+      - resolve_ordinary_ambiguity_internally
+      - update_expectation_ledger
+      - update_or_justify_requirements
+      - update_or_justify_design
+      - update_lexicon_if_needed
+      - create_or_update_task_spec
+      - update_plan_current_queue
+      - validate_harness_ready
+      - record_decision_ledger
+
+  promote_backlog_to_current_queue:
+    operating_context: daily_development
+    steps:
+      - load_context_index
+      - inventory_backlog
+      - deduplicate_backlog
+      - order_by_dependency_and_risk
+      - ensure_requirements_design_spec_for_each_task
+      - add_acceptance_criteria
+      - add_verification_commands
+      - add_runtime_smoke
+      - move_to_current_execution_queue
+      - validate_harness_ready
+      - record_decision_ledger
+
+  execute_current_queue:
+    operating_context: daily_development
+    description: >
+      現在の plan queue を end-to-end で実行し、実装完了で止めずに PR 作成、
+      push 後レビュー、evidence-only anchor、anchor head の final gate とスレッド 0 件、
+      同一 head の release judgement、merge 前契約検査までを同一ライフサイクルとして扱う。
+      全プラン実行モードでは rebase merge、実終端照合、main pull、次 task／terminal
+      state-sync branch の plan・checkpoint・ledger 同期まで続ける。
+    steps:
+      - load_context_index
+      - load_execution_ledger
+      - select_current_queue_head
+      - load_task_spec
+      - reference_requirements_design_spec_completion_conditions   # plan 確認後に必ず FR/spec/design/完了条件を参照（plan だけで判定しない）
+      - verify_requirements_design_spec_completion_conditions_alignment
+      - implement
+      - run_targeted_tests
+      - run_static_checks
+      - propagate_to_related_docs_and_types
+      - run_runtime_smoke
+      - run_pre_pr_critical_review
+      - verify_completion_conditions_via_critical_review_and_independent_peer  # ai/sdd-policy.yml per_task_completion_verification_loop を必須通過（双方満たすまで reimplement→reverify を反復）
+      - record_evidence
+      - update_execution_ledger
+      - classify_release_if_needed
+      - commit_changes
+      - push_branch
+      - create_pr_with_template
+      - request_ai_review_or_repo_aware_fallback
+      - monitor_ci_final_gate
+      - address_ci_and_review_findings
+      - record_and_run_eligible_review_extension_before_terminal_anchor
+      - commit_and_push_review_evidence_only_with_rebase_anchor
+      - monitor_final_anchor_head_ci_and_review_report
+      - verify_zero_unresolved_or_unanswered_review_threads
+      - run_release_judgement
+      - validate_rebase_merge_contract
+      - merge_pr_when_full_plan_mode
+      - fetch_and_verify_actual_merge_terminal
+      - pull_main_after_merge
+      - create_next_task_or_terminal_state_sync_branch
+      - write_task_checkpoint_after_merge   # N-578 B13: 前タスクの実 merge terminal を次 task branch
+                                             # の最初の変更として checkpoint へ書く。自 PR の merge SHA は
+                                             # 自己参照できないため 1 タスク遅れとなるが、main へ直接 push しない。
+                                             # 次 task がなければ専用 terminal state-sync PR を作る。review
+                                             # 修正を含む可変長 sync series、直前task終端からbaseまでの
+                                             # neutral gap、ledger append-only、plan遷移、証跡を検証する。
+      - update_execution_ledger_after_merge # checkpoint と同じ次 branch で実終端を append-only 記録する。
+      - update_plan_after_merge             # checkpoint/ledger と同じ次 branch で前タスクを Done へ移し、
+                                             # 次タスクを Next へ置く。main へ直接 push しない。
+      - validate_current_state_before_next_task_implementation
+      - proceed_to_next_task
+    completion_gate:
+      implementation_only_is_incomplete: true
+      pr_required_before_task_done: true
+      push_review_loop_required: true
+      ci_final_gate_required: true
+      release_judgement_required: true
+      full_plan_mode_requires_merge_before_next_task: true
+      single_task_mode_stops_at_pr_ready: true
+    full_plan_delivery_loop:
+      branch_source: main
+      pr_base: main
+      pr_body_source: .github/PULL_REQUEST_TEMPLATE.md
+      pr_body_transport: --body-file
+      review_loop_source: .github/instructions/review-loop.instructions.md
+      review_round_contract:
+        default_rounds: 3
+        extension_before_terminal_anchor_only: true
+        extension_policy_source: ai/operation-policy.yml#review_policy.push_review_loop.extension_rounds
+        non_blocking_findings_do_not_extend: true
+        anchor_after_all_extensions_converge: true
+      rebase_merge_contract:
+        terminal_subject_suffix: "[PR #<PR番号>; commits=<PR総commit数>]"
+        commit_count_includes_anchor_commit: true
+        reject_multiple_or_non_terminal_anchor: true
+        anchor_commit_allowed_paths: "docs/ai/reviews/*.json only"
+        anchor_evidence_requirement: "final treeで通常file・非空・JSON parse可能"
+        required_base_ref: main
+        require_first_commit_parent_equals_base_ref_oid: true
+        require_local_contiguous_one_parent_nonempty_chain: true
+        require_main_status_checks_strict: true
+        final_gate_order: "review完了 → evidence-only anchor push → final CI/review-report → release judgement（v2 release bundle を判定 comment へ同梱） → pre-merge validator → merge"
+        # P0-03 release 経路（DEC-20260813-002）: release-judgement は kind=release の Evidence Schema v2
+        # artifact を scripts/ai/evidence_generator.py で生成し、scripts/ai/release_evidence_bundle.py の
+        # 検証 pass 後に互換 marker + evidence-v2 参照 + bundle（artifact/manifest JSON）を同じ判定
+        # comment へ同梱する。marker 単独は MERGE 根拠にならず、pre-merge validator と pr_autopilot が
+        # 同 comment の bundle を検証する。bundle は merge 後の次 PR で docs/ai/evidence/ へ archive する。
+        release_evidence_bundle_required: true
+        release_evidence_bundle_tool: "scripts/ai/release_evidence_bundle.py"
+        pre_merge_validator: "uv run python scripts/ai/validate_rebase_merge_contract.py --pr <PR番号> --head-sha-only"
+        lock_checked_head: "gh pr merge <PR番号> --rebase --delete-branch --match-head-commit <検査済みhead SHA>"
+        checkpoint_sha_source: "gh pr view <PR番号> --json mergeCommit の実終端 SHA"
+        terminal_state_sync:
+          unit_shape: "1件以上のsync/review-fix commit + 最終evidence-only anchor"
+          marker_location: "先頭sync commit件名末尾の [STATE-SYNC previous_pr=N] 1件だけ"
+          # N-602A: task closeout event（S1）の append path。専用 validator
+          # scripts/ai/validate_task_closeout_events.py を同じ変更で結線しており、
+          # validator 不在または広い docs/ai/** glob は同 validator が拒否する。
+          sync_allowed_paths: "docs/plan.md, docs/ai/task-checkpoint.md, docs/ai/execution-ledger.md, docs/ai/pre-pr-reviews/**, docs/ai/task-closeout-events/*.yml"
+          evidence_requirement: "pre-PR .md と anchor .json は最終treeで通常file・非空、anchorはJSON parse可能"
+          checkpoint_to_base_gap: "first-parent上のstate-neutral unitだけをtransition mode閾値内で許可"
+          review_fix_strategy: "許可path内の追加sync commit。squash/force-push不要"
+          reject_partial_signal: true
+        rollback_boundary_check: "PR branch と mainline の commit 件名列を oldest-to-newest で完全一致"
+        fail_closed_if_anchor_or_count_mismatch: true
+      merge_after_release_judgement_approval: true
+      post_merge_sequence:
+        - gh_pr_merge_rebase_delete_branch
+        - fetch_and_verify_actual_merge_terminal
+        - git_checkout_main
+        - git_pull_origin_main
+        - create_next_task_or_terminal_state_sync_branch
+        - write_checkpoint_from_actual_terminal
+        - append_execution_ledger_from_actual_terminal
+        - update_plan_on_next_branch
+        - validate_current_state
+        - continue_or_stop_by_next_queue
+
+  governance_change:
+    operating_context: governance_change
+    steps:
+      - load_context_index
+      - audit_existing_rules
+      - ask_or_propose_when_future_operation_is_affected
+      - update_policy_files
+      - update_entrypoint_docs
+      - run_document_inventory
+      - run_harness_validators
+      - record_decision_ledger
+      - produce_migration_notes
+
+  shogun_dispatch:
+    operating_context: daily_development
+    description: >
+      ai/command-router.yml の commands（日常 3 コマンド + governance_change パターン）に
+      一致しない雑依頼の既定入口（N-435 / ADR-0018 / FR-159）。Shogun は orchestrator の
+      入口拡張であり新司令塔エージェントではない。分解の規模は依頼の規模に比例させ、
+      単純な質問・単発の軽作業は分解せず直接処理してよい（報告は caveman_lite_v1）。
+      運用正本は docs/ai/shogun-operating-model.md（N-435b で作成）。
+    steps:
+      - load_context_index
+      - confirm_current_state            # docs/plan.md 優先順注記・git 状態・関連正本の現状確認
+      - capture_intent_and_constraints   # intent / constraints / 安全床の抽出
+      - reclassify_governance_change_if_applicable
+        # ↑ governance_change の user_patterns に一致しなくても、実質 governance_change 相当
+        #   （運用ルール・policy・hook・branch/release policy・長期 workflow の変更）と判断した依頼は
+        #   shogun_dispatch で処理せず governance_change workflow（確認・対話許可）へ再分類する（fail-close）。
+      - classify_risk_tier               # ai/operation-policy.yml の tiers / hard_block を参照（複製しない）
+      - check_capability_lease           # plan 注記 / docs/ai/decision-ledger.md の scoped lease を確認
+      - decompose_into_work_packets      # 最大 8。軽作業は分解せず直接処理
+      - delegate_to_subagents            # Karo/Gunshi/Ashigaru = native capability / skill への委譲パターン名
+      - integrate_results
+      - verify_safety_floor              # hard_block / red_if_touches 非接触の確認（fail-close）
+      - report_with_contract             # 実作業 = shogun_report_contract_v1 / 軽作業 = caveman_lite_v1
+    dispatch_rules:
+      max_work_packets: 8
+      light_request_direct_handling: true
+      merge_autonomy: >
+        ADR-0003 の全プラン実行モード、または scoped lease（「Shogun 判断で進めて」
+        「マージまで進めて」等の明示句）がある場合のみ自律で merge へ進む。
+        いずれの場合も pre-PR critical review、push 後レビューループ、evidence-only
+        anchor、anchor head の final gate と未解決または未返信の active thread 0 件、同一
+        head の release judgement、merge 前契約検査を全て通過した後にのみ merge を実行する。
+        lease は既存ゲートを免除せず、新しい merge 経路を作らない。
+        それ以外の merge は人間判断。GitHub Actions が利用不能な場合のみ
+        N-384 ローカル gate 手順（run_ci_fallback_review → ci/final-gate post）へ
+        fallback し、その post と merge はユーザー個別認可を要する（ADR-0017 決定3。
+        旧「billing 復旧まで全 PR 個別認可必須」条件は 2026-06-26 の billing 解消と
+        2026-06-26 時点の初期 self-hosted 移行完了により失効・DEC-20260703-002）。
+        2026-07-30 の runner trust quarantine と GitHub-hosted 再隔離は、この履歴上の
+        billing 条件失効を取り消すものではない。

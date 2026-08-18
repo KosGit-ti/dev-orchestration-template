@@ -1,0 +1,152 @@
+# テンプレートアップデート マニフェスト（v2）
+# ─────────────────────────────────────────────────────────────
+# scripts/template_update.py がこのファイルを読み、カテゴリに従い
+# テンプレートの変更を子リポジトリへ「選択的に」適用する（apply）。
+# 逆方向（子リポジトリ → テンプレート）の同期にも用いる（export）。
+#
+# 分類アルゴリズム（v2 で厳密化）:
+#   あるファイルに複数のパターンがマッチした場合、
+#   「最も具体的（マッチしたパターン文字列が最長）」なパターンの
+#   カテゴリを採用する。長さが同じ場合のみ下記の優先度で決める。
+#     sample_only > never_update > always_update > add_only
+#   これにより「ディレクトリ全体は never だが、特定ファイルだけ always」
+#   のような上書き指定（例: tests/ は never だが hook テストは always）を
+#   直感どおりに表現できる。
+#
+# パス末尾に "/" があるとディレクトリ全体（前方一致）にマッチする。
+# それ以外は完全一致。
+# ─────────────────────────────────────────────────────────────
+
+version: 2
+
+# check / apply がテンプレート取得元 URL を解決する順序:
+#   template-catalog.yml (template.repository) → 本キー → コード定数
+# 通常は catalog を正本とし、本キーは catalog 欠落時のフォールバック。
+template_repository: https://github.com/KosGit-Dev/dev-orchestration-template.git
+
+categories:
+  # ━━━ always_update ━━━
+  # テンプレート基盤。子リポジトリは常にテンプレート最新版で上書きする。
+  always_update:
+    # AI Operating Model（運用・整合性・仕様駆動の正本 yml 群）
+    - ai/
+    # Claude Code ハーネス（サブエージェント / hooks 実体 / output-styles / skills）
+    - .claude/agents/
+    - .claude/hooks/
+    - .claude/output-styles/
+    - .claude/skills/
+    # エージェントスキル（agmsg / stop-ai-slop-jp の実体）
+    - .agents/
+    # Spec Kit 導入物
+    # Hook スクリプト実体と AI レビュー資材
+    - scripts/hooks/
+    - scripts/ai/
+    - scripts/run_ai_review.py
+    - scripts/__init__.py
+    # ユーティリティスクリプト
+    - scripts/bootstrap.sh
+    - scripts/setup_github.sh
+    - scripts/init_packages.sh
+    - scripts/update_agent_models.sh
+    - scripts/template_update.py
+    # 共通エージェント roster（正本）とプロンプト
+    - .github/agents/
+    - .github/prompts/
+    # GitHub Actions / ワークフロー / 複合アクション / Issue テンプレート
+    - .github/actions/
+    - .github/hooks/
+    - .github/workflows/
+    - .github/ISSUE_TEMPLATE/
+    - .github/PULL_REQUEST_TEMPLATE.md
+    # Copilot コードレビュー設定・トリガー・全プラン実行フラグ雛形
+    - .github/copilot-code-review-instructions.md
+    - .github/.copilot-trigger
+    - .github/full-plan-execution.flag.example
+    # テンプレート同期対象の instructions（review-loop のみ always。他は never_update）
+    - .github/instructions/review-loop.instructions.md
+    - .github/instructions/template-sync.instructions.md
+    # CI ポリシーチェッカー・markdown lint 設定
+    - ci/policy_check.py
+    - .markdownlint.json
+    # Git 属性
+    - .gitattributes
+    # テンプレート同期機構（本マニフェスト・カタログ・スクリプト・ログ・ガイド）
+    - template-catalog.yml
+    - .template-update.yml
+    # テンプレート共通ドキュメント
+    - docs/GETTING_STARTED.md
+    - docs/MODE_GUIDE.md
+    - docs/UPGRADE_GUIDE.md
+    - docs/TEMPLATE_CHANGELOG.md
+    - docs/quality-guide.md
+    - docs/observability-guide.md
+    - docs/security-policy-template.md
+    - docs/orchestration.md
+    - docs/hooks-guide.md
+    - docs/agent-skills-integration.md
+    # テンプレート基盤の hook テスト（プロジェクト側の hook 動作を保証）
+    - tests/test_instruction_source.py
+    - tests/test_review_loop_hooks.py
+    - tests/test_stop_hook_loop_detection.py
+
+  # ━━━ never_update ━━━
+  # プロジェクト固有コンテンツ。テンプレート側の変更を適用しない。
+  never_update:
+    # プロジェクト固有の正本ドキュメント
+    - docs/plan.md
+    - docs/requirements.md
+    - docs/architecture.md
+    - docs/runbook.md
+    - docs/constraints.md
+    - docs/policies.md
+    # ADR（プロジェクトの決定記録・雛形含む）
+    - docs/adr/
+    # プロジェクト固有 instructions（review-loop / template-sync 以外）
+    - .github/instructions/
+    # プロジェクト固有設定
+    - README.md
+    - project-config.yml
+    - LICENSE
+    - pyproject.toml
+    # プロジェクト固有の .gitignore（追記あり得る）
+    - .gitignore
+    # プロジェクトのソース・テスト（catch-all。個別の always / sample が優先）
+    - src/
+    - tests/
+    # プロジェクトのデータ・ノートブック
+    - data/
+    - notebooks/
+
+  # ━━━ add_only ━━━
+  # テンプレートに存在し子リポジトリに無い場合のみ追加。既存は上書きしない。
+  add_only:
+    # 入口ファイル（bootstrap 後のプロジェクト固有カスタマイズを保護。
+    # 更新は instructions の手順に従い手動 diff で取込む）
+    - CLAUDE.md
+    - AGENTS.md
+    - .github/copilot-instructions.md
+    - .claude/settings.json
+    # 運用台帳の雛形（運用開始後の記録を上書きしない）
+    - docs/ai/
+    # エディタ / MCP / Serena 設定（プロジェクト側の変更を保護）
+    - .vscode/
+    - .cursor/
+    - .serena/
+    # 設定ファイル置き場
+    - configs/
+
+  # ━━━ sample_only ━━━
+  # テンプレートのサンプル・雛形コード。子リポジトリには一切コピーしない。
+  sample_only:
+    - scripts/run_pipeline.py
+    - src/sample/
+    - src/observability/
+    - src/my_package/
+    - tests/test_sample_properties.py
+    - tests/test_core.py
+    - tests/test_pipeline.py
+    - tests/test_smoke.py
+    - tests/conftest.py
+    - tests/__init__.py
+    - pyproject.toml.template
+    - configs/pipeline_default.toml

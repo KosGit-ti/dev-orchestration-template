@@ -1,0 +1,44 @@
+[
+{
+  "id": "p-l5-001",
+  "title": "The Replication That Nobody Wanted",
+  "level": 5,
+  "genre": "academic",
+  "text": "In 2011 a laboratory in Utrecht attempted to reproduce a finding that had been cited more than four hundred times. The original experiment was elegant, its result intuitive, and its author widely respected. The replication failed. It failed again on a second attempt with a larger sample and a pre-registered protocol.\n\nWhat happened next is more instructive than the failure itself. The replication was rejected by three journals before it appeared in a fourth. Two of the rejection letters described the work as technically sound but of insufficient general interest. That phrase deserves attention, because it reveals a criterion operating quietly beneath the stated one. A result that confirms is interesting; a result that dissolves is housekeeping.\n\nThe incentive structure here is not {{1}}. Editors compete for citations, and null results attract few. Investigators are promoted on novelty. Funders prefer discovery to consolidation. Each of these preferences is defensible in isolation; taken together they produce a literature in which the strength of a claim correlates poorly with the number of times it has been tested.\n\nThe remedy usually proposed is registered reports, in which a journal accepts a study on the basis of its method before the data exist. This {{2}} the question of whether the result will be publishable, and with it the pressure to find something. Adoption has been slow, which is itself evidence of how firmly the older habits are held.",
+  "glossary": [
+    { "headword": "pre-registered", "definition": "with the analysis plan filed publicly before data collection begins" },
+    { "headword": "null result", "definition": "a finding that no effect was detected" }
+  ],
+  "clozes": [
+    { "id": "p-l5-001-c1", "answer": "spurious", "options": ["spurious", "explicit", "meticulous", "resilient"], "hint": "seeming real but in fact false" },
+    { "id": "p-l5-001-c2", "answer": "obviates", "options": ["obviates", "exacerbates", "corroborates", "extrapolates"], "hint": "removes a difficulty so that dealing with it becomes unnecessary" }
+  ],
+  "questions": [
+    { "id": "p-l5-001-q1", "prompt": "What does the writer find most instructive about the Utrecht case?", "options": ["The difficulty the replication had in reaching print", "The elegance of the original experiment", "The size of the second sample", "The author's reputation"], "answerIndex": 0, "rationale": "The second paragraph opens by saying what happened next is more instructive than the failure itself." },
+    { "id": "p-l5-001-q2", "prompt": "How does the writer characterise the phrase 'insufficient general interest'?", "options": ["As exposing an unstated criterion for publication", "As an honest description of the work's quality", "As a standard editorial formula with no meaning", "As evidence that the replication was flawed"], "answerIndex": 0, "rationale": "The passage says the phrase reveals a criterion operating quietly beneath the stated one." },
+    { "id": "p-l5-001-q3", "prompt": "Why does the writer describe the incentives as individually defensible?", "options": ["To show that a damaging outcome can arise without anyone acting badly", "To defend editors against criticism", "To argue that reform is unnecessary", "To suggest that funders are the primary cause"], "answerIndex": 0, "rationale": "Each preference is defensible in isolation, yet together they produce the weak literature described." },
+    { "id": "p-l5-001-q4", "prompt": "What does slow adoption of registered reports indicate, according to the passage?", "options": ["The strength of existing habits", "A flaw in the registered-report method", "Insufficient funding for reform", "Disagreement about what a null result means"], "answerIndex": 0, "rationale": "The final sentence calls slow adoption evidence of how firmly older habits are held." }
+  ]
+},
+{
+  "id": "p-l5-002",
+  "title": "On Rereading",
+  "level": 5,
+  "genre": "narrative",
+  "text": "I have read the same novel at seventeen, at thirty-one, and again last winter. The sentences did not move. Everything else did.\n\nAt seventeen I read it for the plot and found the ending unfair. At thirty-one I read it for the prose and found the plot beside the point. Last winter I read it for the passages I had underlined at seventeen, and found that I could no longer reconstruct why those particular lines had seemed worth marking. The pencil was mine; the reasoning had gone.\n\nThis is the ordinary experience of rereading, and it is more unsettling than it sounds. We tend to speak of a book as though it held a fixed quantity of meaning that a careful reader extracts. But a text does not hand over its meaning; it meets whatever the reader brings and produces something jointly. The book at seventeen and the book last winter were not the same object, however {{1}} the printing.\n\nWhich raises an uncomfortable question about first readings. If understanding depends on what the reader has lived through, then any confident verdict delivered on a single pass is {{2}} — resting on a foundation that will not bear the weight placed on it. The honest position is that a first reading is a first draft of a reading, and that most of us publish the draft.",
+  "glossary": [
+    { "headword": "prose", "definition": "ordinary written language, as opposed to verse" },
+    { "headword": "verdict", "definition": "a judgement reached after consideration" }
+  ],
+  "clozes": [
+    { "id": "p-l5-002-c1", "answer": "identical", "options": ["identical", "innocuous", "pervasive", "eclectic"], "hint": "exactly the same in every detail" },
+    { "id": "p-l5-002-c2", "answer": "precarious", "options": ["precarious", "prudent", "redundant", "salient"], "hint": "not securely supported, and likely to fall" }
+  ],
+  "questions": [
+    { "id": "p-l5-002-q1", "prompt": "What did the writer discover on the most recent reading?", "options": ["The reasons behind the old underlinings were no longer recoverable.", "The ending had been revised in a later edition.", "The prose was weaker than remembered.", "The plot was fairer than at seventeen."], "answerIndex": 0, "rationale": "The pencil was the writer's, but the reasoning had gone." },
+    { "id": "p-l5-002-q2", "prompt": "What view of textual meaning does the third paragraph reject?", "options": ["That a text contains fixed meaning waiting to be extracted", "That readers change over time", "That prose style matters more than plot", "That rereading is unsettling"], "answerIndex": 0, "rationale": "It contrasts the extraction model with meaning produced jointly by text and reader." },
+    { "id": "p-l5-002-q3", "prompt": "What is the 'uncomfortable question' about first readings?", "options": ["Whether a judgement made on one pass can be trusted", "Whether first readings should be timed", "Whether young readers should read difficult novels", "Whether underlining helps memory"], "answerIndex": 0, "rationale": "The final paragraph questions confident verdicts delivered on a single pass." },
+    { "id": "p-l5-002-q4", "prompt": "What does the closing sentence criticise?", "options": ["Treating a provisional reading as a finished judgement", "The practice of rereading old favourites", "Publishing reviews without payment", "Writers who revise too often"], "answerIndex": 0, "rationale": "A first reading is a first draft, and most of us publish the draft." }
+  ]
+}
+]

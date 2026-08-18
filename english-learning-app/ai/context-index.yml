@@ -1,0 +1,134 @@
+schema_version: 1
+purpose: >
+  有効コンテキストを小さく決定的に保つ。エージェントは既定で全履歴文書を読まない。
+
+always_read:
+  - ai/command-router.yml
+  - ai/operation-policy.yml
+  - ai/capability-registry.yml
+  - ai/context-index.yml
+
+task_spec_aliases:
+  R-025: docs/specs/N-582-profitability-research-program.md
+  N-594B: docs/specs/N-594B-derived-compute-accounting.md
+  N-598C: docs/specs/N-598C-exact-current-state-resolver.md
+  N-600: docs/specs/N-600-root-cause-analysis.md
+  N-601: docs/specs/N-601-recurrence-analyzer-ledger-validator.md
+  N-602: docs/specs/N-602-evidence-truthfulness-generation.md
+  N-602A: docs/specs/N-602-evidence-truthfulness-generation.md
+  N-602B: docs/specs/N-602-evidence-truthfulness-generation.md
+  N-603: docs/specs/N-603-effectiveness-metrics.md
+  N-604: docs/specs/N-604-control-retirement.md
+
+modes:
+  revise_and_enqueue:
+    required:
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - docs/requirements.md
+      - docs/design.md
+      - docs/plan.md
+      - docs/ai/expectation-ledger.md
+    conditional:
+      - docs/lexicon/project-lexicon.yml
+      - docs/policies.md
+      - docs/constraints.md
+
+  promote_backlog_to_current_queue:
+    required:
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - docs/plan.md
+      - docs/specs/_template.md
+    conditional:
+      - docs/requirements.md
+      - docs/design.md
+
+  execute_current_queue:
+    required:
+      - ai/sdd-policy.yml
+      - ai/coherence-workflow.yml
+      - ai/pre-pr-review-policy.yml
+      - .github/instructions/review-loop.instructions.md
+      - .github/PULL_REQUEST_TEMPLATE.md
+      - docs/plan.md
+      - docs/ai/execution-ledger.md
+      # last-settled checkpoint。読む前に
+      # `uv run python scripts/ai/resolve_current_state.py --context transition` で
+      # mainline・plan active-queue:v1・local flagと合成したcurrent stateを取得する
+      # （N-598C・SessionStart／AGENTS／Copilot／CI共通entrypoint。fail／issues非空時は
+      # 内容を信用しない）。
+      - docs/ai/task-checkpoint.md
+      - docs/specs/_template.md
+    conditional:
+      # N-584 系タスク（N-585〜N-596・監査改善プログラム）は umbrella 現状照合として
+      # 必読（N-595 PR-5 AC-08 点検）。task_specific の docs/specs/<TASK_ID>.md からも
+      # 引用参照されるが、取りこぼしを防ぐため context-index 側にも明示する
+      - docs/audits/audit-materialization-report-2026-07-24.md
+      # HRAI-REAUDIT-20260812 の実装 task（N-594B／N-598C／N-600〜N-604）は、
+      # 原子 claim の採否・依存・負例・解除 gate を本 report／manifest から読む。
+      - docs/audits/audit-materialization-report-2026-08-12.md
+      - docs/audits/audit-materialization-manifest-2026-08-12.yml
+    task_specific:
+      # suffix phase は canonical spec へ解決してから読む。存在しない N-602A.md 等を推測で作らない。
+      # HRAI-REAUDIT-20260812 の解決値は上のtask_spec_aliasesを正本とし、manifestのtask mappingと
+      # exact一致させる。
+      - docs/specs/<TASK_ID>.md
+      - docs/requirements.md#<relevant-section>
+      - docs/design.md#<relevant-section>
+
+  shogun_dispatch:
+    required:
+      - ai/coherence-workflow.yml
+      - docs/plan.md
+      - docs/orchestration.md
+      # lease 記録は dispatch の挙動を規定するため required。agent roster は持たない
+      - docs/ai/decision-ledger.md
+      # Shogun 運用モデルの運用正本・安全境界（N-435b で作成・required）
+      - docs/ai/shogun-operating-model.md
+      - docs/ai/shogun-safety-boundary.md
+      # 実作業を伴う dispatch の SDD 鎖の正本（coherence chain 宣言と読込範囲の整合）
+      - ai/sdd-policy.yml
+    conditional:
+      # 複数セッション層（任意）で運用する場合は required 相当として必読（mailbox / lock / nudge の正本）
+      - docs/ai/shogun-multi-session-protocol.md
+      # 実作業を伴う dispatch は ai/sdd-policy.yml の coherence chain に従い、該当正本の関連節を必読とする
+      - docs/requirements.md#<relevant-section>
+      - docs/design.md#<relevant-section>
+      - docs/policies.md
+      - docs/constraints.md
+
+  governance_change:
+    required:
+      - ai/document-governance.yml
+      - ai/sdd-policy.yml
+      - docs/ai/operating-model.md
+      - docs/ai/change-log.md
+      # N-599（FR-172-2・NFR-070）: 自己改善制御ループの状態機械・promotion rule・
+      # 安全床の正本。governance change（policy/skill/agent/validator/ci/runbook の
+      # 改修）は着手前に本 policy の safety_floor と entry_triggers を確認する。
+      - ai/self-improvement-policy.yml
+      # 上記 policy の実体台帳（append-only）。同一 recurrence_class の finding が
+      # 既出かを確認してから改修に着手する。
+      - docs/ai/improvement-ledger.md
+    conditional:
+      # 第4次再監査に由来する governance change の期間だけ読む。原本は immutable source、
+      # report／manifest が採用後の実装 traceability 正本である。
+      - docs/audits/audit-materialization-report-2026-08-12.md
+      - docs/audits/audit-materialization-manifest-2026-08-12.yml
+      - docs/adr/ADR-0024-composed-current-state-resolver.md
+    inventory_targets:
+      - AGENTS.md
+      - CLAUDE.md
+      - .github/**/*.md
+      - .claude/**/*.md
+      - docs/**/*.md
+      - ai/**/*.yml
+
+never_read_by_default:
+  - docs/archive/**
+  - docs/research/**
+  - outputs/**
+  - data/**
+  - operator-only/**
+  - prompts/**

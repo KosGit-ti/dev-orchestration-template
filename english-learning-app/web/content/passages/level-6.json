@@ -1,0 +1,216 @@
+[
+  {
+    "id": "p-l6-001",
+    "title": "The Archive and Its Silences",
+    "level": 6,
+    "genre": "academic",
+    "text": "Historians are trained to interrogate documents, but they are trained less thoroughly to interrogate the fact that a document exists at all. Survival is not neutral. A parish register endures because someone maintained it, someone else declined to burn it, and a third party judged it worth the shelf space. Each of those acts was a choice, and choices have direction.\n\nConsider the standard account of a nineteenth-century industrial dispute. The archive will hold the mill owner's correspondence, the magistrate's notes, and the newspaper's reporting — all of them literate, institutional, and preserved by institutions with an interest in their own continuity. What it will rarely hold is any sustained record of what the strikers themselves believed. Their reasoning survives, when it survives, in the hostile paraphrase of people writing to have them arrested.\n\nThe methodological error is to treat this asymmetry as an absence of evidence rather than as evidence in itself. A gap with a shape is a finding. If every surviving account of a dispute is written by one party, that pattern tells you something reliable about the distribution of literacy, leisure, and institutional power, even where it tells you nothing {{1}} about the dispute.\n\nWhat follows is not the fashionable conclusion that all accounts are equally partial and therefore nothing can be known. That inference is {{2}}: it moves from the true premise that every source has a position to the false conclusion that positions cannot be compared. They can. A claim that survives in three mutually hostile records is on firmer ground than one that appears in a single sympathetic memoir, and the historian's craft consists largely in knowing the difference.",
+    "glossary": [
+      {
+        "headword": "parish register",
+        "definition": "a local church record of births, marriages, and deaths"
+      },
+      {
+        "headword": "paraphrase",
+        "definition": "a restatement of what someone said, in different words"
+      },
+      {
+        "headword": "premise",
+        "definition": "a statement taken as the starting point of an argument"
+      }
+    ],
+    "clozes": [
+      {
+        "id": "p-l6-001-c1",
+        "answer": "dispositive",
+        "options": [
+          "dispositive",
+          "quotidian",
+          "munificent",
+          "laconic"
+        ],
+        "hint": "settling a question conclusively"
+      },
+      {
+        "id": "p-l6-001-c2",
+        "answer": "specious",
+        "options": [
+          "specious",
+          "assiduous",
+          "sanguine",
+          "trenchant"
+        ],
+        "hint": "looking sound at first glance but false once examined"
+      }
+    ],
+    "questions": [
+      {
+        "id": "p-l6-001-q1",
+        "prompt": "What is the writer's central claim about archival survival?",
+        "options": [
+          "Survival results from a chain of choices and is therefore directional",
+          "Archives are deliberately falsified by institutions",
+          "Older documents are less reliable than newer ones",
+          "Most historical records have been lost by accident"
+        ],
+        "answerIndex": 0,
+        "rationale": "The first paragraph enumerates the choices behind survival and states that choices have direction."
+      },
+      {
+        "id": "p-l6-001-q2",
+        "prompt": "Why does the writer say the strikers' reasoning survives 'in hostile paraphrase'?",
+        "options": [
+          "It reaches us only through the words of those prosecuting them",
+          "The strikers wrote in dialect that cannot be read",
+          "Their own documents were forged later",
+          "Newspapers refused to interview them"
+        ],
+        "answerIndex": 0,
+        "rationale": "The second paragraph says it survives in the paraphrase of people writing to have them arrested."
+      },
+      {
+        "id": "p-l6-001-q3",
+        "prompt": "What does the writer mean by 'a gap with a shape is a finding'?",
+        "options": [
+          "The pattern of what is missing is itself informative",
+          "Missing records should be reconstructed by inference",
+          "Gaps prove that documents were destroyed",
+          "Historians should not write about poorly documented events"
+        ],
+        "answerIndex": 0,
+        "rationale": "The third paragraph treats the asymmetry as evidence about literacy, leisure, and power."
+      },
+      {
+        "id": "p-l6-001-q4",
+        "prompt": "Which position does the final paragraph explicitly reject?",
+        "options": [
+          "That universal partiality makes all sources equally worthless",
+          "That hostile sources should be discarded",
+          "That memoirs are more reliable than official records",
+          "That historians should avoid comparing accounts"
+        ],
+        "answerIndex": 0,
+        "rationale": "It names the inference from 'every source has a position' to 'positions cannot be compared' as false."
+      },
+      {
+        "id": "p-l6-001-q5",
+        "prompt": "What criterion does the writer offer for greater confidence in a claim?",
+        "options": [
+          "Corroboration across sources hostile to one another",
+          "The eloquence of the surviving account",
+          "Proximity in time to the events",
+          "The institutional status of the author"
+        ],
+        "answerIndex": 0,
+        "rationale": "A claim surviving in three mutually hostile records is said to be on firmer ground."
+      }
+    ]
+  },
+  {
+    "id": "p-l6-002",
+    "title": "Against the Tyranny of the Legible",
+    "level": 6,
+    "genre": "expository",
+    "text": "Institutions manage what they can measure, and they measure what can be written down. This is not a criticism; it is a description of how administration is possible at all. A ministry cannot supervise ten thousand schools by acquaintance. It requires numbers, and numbers require categories, and categories require that the irregular be trimmed until it fits.\n\nThe difficulty is that the trimming is invisible in the resulting figure. A hospital reports waiting times; the figure is accurate; and yet it says nothing about the patient who stopped attempting to make an appointment. The metric records the queue, not the people who concluded that queuing was futile. Any indicator, once adopted, quietly redefines the thing it was meant to describe, and the redefinition is almost always in the direction of what is easy to count.\n\nWhat makes this hard to remedy is that the obvious correction fails. Adding metrics does not restore the missing texture; it multiplies the number of things being gamed. Nor does {{1}} the measurement regime altogether help: an institution without indicators does not become humane, it becomes opaque, and opacity protects the powerful more reliably than bad statistics do.\n\nThe defensible position is narrower and less satisfying. Keep the indicators, but hold them at arm's length: treat every figure as a proxy that has been optimised against, insist on qualitative accounts alongside it, and grant standing to the people the categories fit worst. None of this scales elegantly. It requires judgement exercised repeatedly by named individuals who can be held responsible — which is precisely what the appeal to numbers was invented to {{2}}.",
+    "glossary": [
+      {
+        "headword": "proxy",
+        "definition": "something measured in place of what one actually cares about"
+      },
+      {
+        "headword": "opaque",
+        "definition": "impossible to see into or understand from outside"
+      },
+      {
+        "headword": "gamed",
+        "definition": "manipulated so as to score well without achieving the underlying goal"
+      }
+    ],
+    "clozes": [
+      {
+        "id": "p-l6-002-c1",
+        "answer": "abandoning",
+        "options": [
+          "abandoning",
+          "corroborating",
+          "delineating",
+          "juxtaposing"
+        ],
+        "hint": "giving something up completely"
+      },
+      {
+        "id": "p-l6-002-c2",
+        "answer": "obviate",
+        "options": [
+          "obviate",
+          "presage",
+          "expiate",
+          "gainsay"
+        ],
+        "hint": "to make something unnecessary by removing the need for it"
+      }
+    ],
+    "questions": [
+      {
+        "id": "p-l6-002-q1",
+        "prompt": "Why does the writer say the opening description is 'not a criticism'?",
+        "options": [
+          "Measurement is a precondition of administering anything at scale",
+          "Institutions have no alternative to numbers",
+          "Critics of metrics have been refuted",
+          "Measurement is morally neutral in its effects"
+        ],
+        "answerIndex": 0,
+        "rationale": "A ministry cannot supervise ten thousand schools by acquaintance; numbers make administration possible."
+      },
+      {
+        "id": "p-l6-002-q2",
+        "prompt": "What does the hospital example illustrate?",
+        "options": [
+          "An accurate figure can systematically exclude the people it most concerns",
+          "Waiting-time data is usually falsified",
+          "Patients should be counted more often",
+          "Hospitals prefer short queues to good care"
+        ],
+        "answerIndex": 0,
+        "rationale": "The metric records the queue but not those who concluded queuing was futile."
+      },
+      {
+        "id": "p-l6-002-q3",
+        "prompt": "Why does the writer reject adding more metrics?",
+        "options": [
+          "It increases the surface available for gaming without restoring texture",
+          "It is too expensive for most institutions",
+          "It confuses the public",
+          "It duplicates existing categories"
+        ],
+        "answerIndex": 0,
+        "rationale": "Adding metrics multiplies the number of things being gamed."
+      },
+      {
+        "id": "p-l6-002-q4",
+        "prompt": "What is the writer's objection to abolishing indicators?",
+        "options": [
+          "Opacity shields the powerful more effectively than poor statistics",
+          "Staff would resist the change",
+          "No institution has ever tried it",
+          "Qualitative accounts are unreliable"
+        ],
+        "answerIndex": 0,
+        "rationale": "An institution without indicators becomes opaque, and opacity protects the powerful."
+      },
+      {
+        "id": "p-l6-002-q5",
+        "prompt": "What is the irony identified in the closing sentence?",
+        "options": [
+          "The proposed remedy requires the very personal judgement that metrics were meant to replace",
+          "Numbers are more humane than the writer admits",
+          "Responsibility cannot be assigned to individuals",
+          "Qualitative accounts also require measurement"
+        ],
+        "answerIndex": 0,
+        "rationale": "It requires judgement by named responsible individuals, which the appeal to numbers was invented to obviate."
+      }
+    ]
+  }
+]

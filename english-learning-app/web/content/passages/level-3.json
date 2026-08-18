@@ -1,0 +1,42 @@
+[
+{
+  "id": "p-l3-001",
+  "title": "The Cost of a Straight Road",
+  "level": 3,
+  "genre": "expository",
+  "text": "When engineers plan a road through hills, the straight line is rarely the cheapest one. A straight road must cut through rock and cross valleys on bridges, and both are expensive. A curved road follows the shape of the land and costs far less to build.\n\nBut cost does not end when the road opens. A curved road is longer, so every vehicle that uses it burns more fuel, for as long as the road exists. Over forty years, that difference can {{1}} the money saved during construction.\n\nThis is why road planning is difficult. The savings are immediate and easy to measure; the losses arrive slowly and are spread across thousands of drivers who never see the {{2}}. A decision that looks careful in year one can look careless in year thirty.\n\nGood planners therefore ask a harder question than \"what does this cost?\" They ask over what period the cost should be counted. The answer changes the road.",
+  "glossary": [
+    { "headword": "valley", "definition": "low ground between hills, often with a river in it" },
+    { "headword": "construction", "definition": "the work of building something" }
+  ],
+  "clozes": [
+    { "id": "p-l3-001-c1", "answer": "outweigh", "options": ["outweigh", "acknowledge", "maintain", "obtain"], "hint": "to be greater or more important than something else" },
+    { "id": "p-l3-001-c2", "answer": "trend", "options": ["trend", "evidence", "outcome", "emphasis"], "hint": "the general direction in which something is moving" }
+  ],
+  "questions": [
+    { "id": "p-l3-001-q1", "prompt": "Why is a curved road often cheaper to build?", "options": ["It follows the land and avoids cutting and bridging.", "It uses less expensive material.", "It needs fewer workers.", "It can be built in any weather."], "answerIndex": 0, "rationale": "The first paragraph contrasts cutting through rock and bridging valleys with following the shape of the land." },
+    { "id": "p-l3-001-q2", "prompt": "What makes the long-term cost hard to see?", "options": ["It is spread thinly across many drivers over many years.", "It is deliberately hidden by engineers.", "Fuel prices cannot be predicted.", "Nobody records how long roads last."], "answerIndex": 0, "rationale": "The third paragraph says losses arrive slowly and are spread across thousands of drivers." },
+    { "id": "p-l3-001-q3", "prompt": "What does the writer suggest good planners do differently?", "options": ["They decide over what time period costs should be counted.", "They always choose the straight route.", "They ignore construction cost entirely.", "They consult drivers before building."], "answerIndex": 0, "rationale": "The last paragraph names the harder question as the period over which cost is counted." }
+  ]
+},
+{
+  "id": "p-l3-002",
+  "title": "The Woman Who Kept the Records",
+  "level": 3,
+  "genre": "narrative",
+  "text": "For thirty-one years, Elena Ruiz wrote down the water level of the river behind her house. She used the same notebook style, the same pen, and the same time of day. Nobody asked her to do it. She simply wanted to know.\n\nWhen the regional office began studying flood risk in 2019, they found that official measurements only went back to 2004. Elena's notebooks went back to 1988. Her records were not scientific instruments, but they were {{1}}: taken the same way, at the same hour, for three decades.\n\nAt first the researchers were doubtful. Then they compared her figures with the official ones for the overlapping years. The two sets agreed closely. That agreement was enough to {{2}} the earlier data as usable.\n\nThe study that followed changed where the town allowed building. Elena did not consider herself a scientist. She had simply refused to stop.",
+  "glossary": [
+    { "headword": "overlapping", "definition": "covering the same period of time as something else" },
+    { "headword": "flood", "definition": "water covering land that is normally dry" }
+  ],
+  "clozes": [
+    { "id": "p-l3-002-c1", "answer": "consistent", "options": ["consistent", "significant", "previous", "apparent"], "hint": "always done in the same way, without variation" },
+    { "id": "p-l3-002-c2", "answer": "establish", "options": ["establish", "identify", "transfer", "reveal"], "hint": "to prove something firmly enough that others accept it" }
+  ],
+  "questions": [
+    { "id": "p-l3-002-q1", "prompt": "Why were Elena's notebooks valuable to the researchers?", "options": ["They extended the record sixteen years further back.", "They were more accurate than official instruments.", "They contained flood photographs.", "They were written by a trained scientist."], "answerIndex": 0, "rationale": "Official data began in 2004 while her records began in 1988." },
+    { "id": "p-l3-002-q2", "prompt": "How did the researchers decide the old data could be trusted?", "options": ["They checked her figures against official ones for shared years.", "They repeated her measurements in 2019.", "They asked her neighbours.", "They accepted them without checking."], "answerIndex": 0, "rationale": "The third paragraph describes comparing the two sets for overlapping years." },
+    { "id": "p-l3-002-q3", "prompt": "What does the final sentence suggest about Elena?", "options": ["Her persistence, not her training, made the record useful.", "She wanted official recognition.", "She regretted the years she spent.", "She had planned the study from the start."], "answerIndex": 0, "rationale": "She did not consider herself a scientist; she had simply refused to stop." }
+  ]
+}
+]

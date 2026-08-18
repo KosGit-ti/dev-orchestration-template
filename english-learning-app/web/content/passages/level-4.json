@@ -1,0 +1,42 @@
+[
+{
+  "id": "p-l4-001",
+  "title": "What the Pilot Study Could Not Tell Us",
+  "level": 4,
+  "genre": "academic",
+  "text": "A pilot study is a small trial run before a larger one. Its purpose is procedural: to find out whether the instructions are clear, whether the equipment works, and whether the timing is realistic. It is not designed to answer the research question, and treating it as though it were is one of the most {{1}} errors in applied research.\n\nThe problem is statistical. With a small sample, an apparent effect may be produced by chance alone. Report that effect as a finding and you have converted noise into a claim. Later work then has to spend resources refuting something that was never established in the first place.\n\nThere is also a subtler risk. Investigators who see a promising result in a pilot rarely remain neutral afterwards. Expectations shape which measurements feel worth repeating and which anomalies feel worth explaining away. The pilot has then {{2}} the very independence that the main study depends on.\n\nNone of this argues against pilot studies. It argues for reporting them as what they are: a test of method, not a test of hypothesis. The distinction is easy to state and surprisingly hard to hold.",
+  "glossary": [
+    { "headword": "sample", "definition": "the group actually measured, taken from a larger population" },
+    { "headword": "hypothesis", "definition": "a proposed explanation that a study is designed to test" }
+  ],
+  "clozes": [
+    { "id": "p-l4-001-c1", "answer": "widespread", "options": ["widespread", "inevitable", "arbitrary", "coherent"], "hint": "found among many people or in many places" },
+    { "id": "p-l4-001-c2", "answer": "undermined", "options": ["undermined", "reinforced", "anticipated", "integrated"], "hint": "gradually weakened something, often without anyone noticing" }
+  ],
+  "questions": [
+    { "id": "p-l4-001-q1", "prompt": "According to the passage, what is the proper purpose of a pilot study?", "options": ["To test whether the method works in practice", "To produce a preliminary answer to the research question", "To attract funding for the main study", "To reduce the sample size needed later"], "answerIndex": 0, "rationale": "The first paragraph calls the purpose procedural: instructions, equipment, timing." },
+    { "id": "p-l4-001-q2", "prompt": "What is the 'subtler risk' the third paragraph describes?", "options": ["A promising pilot result biases the investigators' later judgement.", "Pilot studies consume the budget of the main study.", "Small samples cannot detect large effects.", "Journals refuse to publish pilot data."], "answerIndex": 0, "rationale": "It states that expectations shape which measurements and anomalies feel worth pursuing." },
+    { "id": "p-l4-001-q3", "prompt": "What is the writer's overall position on pilot studies?", "options": ["They are useful provided their role is reported honestly.", "They should be abandoned in applied research.", "They are only valid with large samples.", "They should replace the main study when results are strong."], "answerIndex": 0, "rationale": "The last paragraph says none of this argues against pilot studies, only against misreporting them." }
+  ]
+},
+{
+  "id": "p-l4-002",
+  "title": "The Argument for Slower Trains",
+  "level": 4,
+  "genre": "news",
+  "text": "The regional transport authority has proposed reducing the top speed of its inter-city service by twelve per cent, a decision that has drawn criticism from commuter groups and cautious support from engineers.\n\nThe authority's case rests on maintenance. At current speeds, track components are replaced on a four-year cycle; at the proposed speed, modelling suggests a seven-year cycle would be {{1}}. Fewer overnight closures would follow, and the network would lose less capacity to repair work than it gains from speed.\n\nCommuter groups dispute the modelling rather than the principle. Their representatives point out that journey times would rise by roughly nine minutes, and argue that the projected maintenance savings rest on assumptions about component wear that the authority has not published. That objection is {{2}}: without the underlying figures, the trade-off cannot be independently checked.\n\nThe authority has agreed to release the modelling before the consultation closes. Until then, both sides are arguing about a number that only one of them can see.",
+  "glossary": [
+    { "headword": "commuter", "definition": "a person who travels regularly between home and work" },
+    { "headword": "consultation", "definition": "a period in which the public may comment on a proposal" }
+  ],
+  "clozes": [
+    { "id": "p-l4-002-c1", "answer": "feasible", "options": ["feasible", "ambiguous", "predominant", "substantial"], "hint": "possible to do without unreasonable difficulty" },
+    { "id": "p-l4-002-c2", "answer": "legitimate", "options": ["legitimate", "inevitable", "compelling", "comprehensive"], "hint": "reasonable and fair, and therefore deserving an answer" }
+  ],
+  "questions": [
+    { "id": "p-l4-002-q1", "prompt": "What is the authority's main justification for slower trains?", "options": ["Longer intervals between track replacement", "Lower fuel consumption", "Reduced accident rates", "Pressure from engineers"], "answerIndex": 0, "rationale": "The second paragraph presents the four-year to seven-year maintenance cycle as the case." },
+    { "id": "p-l4-002-q2", "prompt": "What exactly do the commuter groups object to?", "options": ["The unpublished assumptions behind the modelling", "The idea that maintenance matters", "The length of the consultation", "The engineers' support for the plan"], "answerIndex": 0, "rationale": "The third paragraph says they dispute the modelling rather than the principle, because the figures are unpublished." },
+    { "id": "p-l4-002-q3", "prompt": "What does the final sentence imply?", "options": ["The debate cannot be resolved until the data is shared.", "The authority has already decided to withdraw the plan.", "Commuters will accept the nine-minute increase.", "The engineers have seen the figures and approve."], "answerIndex": 0, "rationale": "It says both sides argue about a number only one of them can see." }
+  ]
+}
+]

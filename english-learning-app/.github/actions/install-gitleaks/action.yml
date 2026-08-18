@@ -1,0 +1,44 @@
+# =============================================================================
+# Install gitleaks（composite action）
+# =============================================================================
+# gitleaks CLI を SHA256 検証つきで $RUNNER_TEMP/bin へ導入し PATH へ追加する。
+# self-hosted runner では /usr/local/bin へ書込権限がないため root 非依存で展開する。
+# 利用元: ci.yml（secret-scan）/ security-gate.yml。version / sha256 の更新は本
+# action の defaults を 1 箇所変更すれば全利用元へ反映される（重複定義の drift 防止）。
+# =============================================================================
+name: Install gitleaks
+description: gitleaks を SHA256 検証つきで RUNNER_TEMP/bin へ導入する（root 非依存）
+
+inputs:
+  version:
+    description: gitleaks バージョン（v なし）
+    required: false
+    default: "8.30.1"
+  sha256:
+    description: linux_x64 tarball の SHA256
+    required: false
+    default: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+
+runs:
+  using: composite
+  steps:
+    - name: Download, verify and install gitleaks
+      shell: bash
+      env:
+        GITLEAKS_VERSION: ${{ inputs.version }}
+        GITLEAKS_SHA256: ${{ inputs.sha256 }}
+      run: |
+        # -u を明示追加（composite の bash 既定は -e -o pipefail のみ）。
+        # 一時的なネットワーク断（canary で実証済みの故障モード）に curl リトライで耐える
+        set -euo pipefail
+        # ダウンロード先も RUNNER_TEMP 配下（ジョブ単位に分離）＝/tmp 固定パスの
+        # 並列ジョブ競合・残留ファイル誤検証を避ける
+        tarball="${RUNNER_TEMP}/gitleaks.tar.gz"
+        curl -sSfL --retry 3 --retry-delay 2 --retry-connrefused \
+          -o "${tarball}" \
+          "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+        echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
+        mkdir -p "${RUNNER_TEMP}/bin"
+        tar -xzf "${tarball}" -C "${RUNNER_TEMP}/bin" gitleaks
+        echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+        "${RUNNER_TEMP}/bin/gitleaks" version

@@ -1,0 +1,113 @@
+# =============================================================================
+# プロジェクト設定ファイル（english-learning-app）
+# =============================================================================
+# 本ファイルは bootstrap 時のプレースホルダ置換入力であると同時に、
+# プロジェクトの基本情報・ツールチェイン・ポリシーの機械可読な正本である。
+# =============================================================================
+
+project:
+  name: "english-learning-app"
+  display_name: "English in English"
+  description: "英語を英語のまま理解して覚えるための学習アプリ（Web / PWA）"
+  purpose: |
+    学習者が英文・英単語を母語へ翻訳せずに理解できる状態（英語での直接理解）へ
+    到達することを第一目的とする。日本語訳の暗記は目的から外し、英英定義・文脈・
+    用例・音声だけで意味が立ち上がる経路を用意する。
+    到達点は TOEFL iBT 120 / TOEIC 990（いずれも満点）相当の語彙・読解水準とする。
+  scope_in: |
+    - 単語学習モード（英英定義・コロケーション・SRS による長期記憶化）
+    - 文章学習モード（英文パッセージの読解・穴埋め・音声シャドーイング）
+    - レベル別学習モード（CEFR A1〜C2 / TOEIC・TOEFL スコア帯の選択と進捗管理）
+    - ログイン（admin / 一般ユーザー）と学習進捗の端末内永続化
+    - Web（PWA）配信。iPhone はホーム画面追加、将来 Capacitor で iOS/Android 化
+  scope_out: |
+    - 有料辞書・有料コーパスなど、ライセンス上再配布できないコンテンツの同梱
+    - サーバーサイドの本格的な認証基盤（初期版はクライアント完結、将来差し替え）
+    - スピーキング自動採点、AI 添削などの外部 API 従量課金を前提とする機能
+    - 日本語訳の提示（第一目的と矛盾するため、学習コンテンツには含めない）
+  owner: "KosGit-Dev"
+
+toolchain:
+  language: "typescript"
+  version: "5.7"
+  package_manager: "npm"
+  linter: "npm run lint"
+  formatter: "npm run format:check"
+  type_checker: "npm run type-check"
+  test_runner: "npm test"
+  run_prefix: "npm run"
+
+source:
+  src_dir: "web"
+  package_name: "web"
+  modules:
+    - name: "app"
+      description: "Next.js App Router のページとレイアウト"
+    - name: "components"
+      description: "UI コンポーネント（表示のみ、副作用を持たない）"
+    - name: "lib/auth"
+      description: "認証境界。AuthProvider 抽象とクライアント完結実装"
+    - name: "lib/content"
+      description: "学習コンテンツの型・読込・レベル解決"
+    - name: "lib/srs"
+      description: "間隔反復（SM-2 派生）のスケジューリング"
+    - name: "lib/progress"
+      description: "学習進捗の永続化とレベル判定"
+    - name: "content"
+      description: "レベル別の語彙・パッセージデータ（英語のみ）"
+
+roadmap:
+  phases:
+    - id: 0
+      name: "Foundation"
+      goal: "静的エクスポート基盤・PWA・認証・テーマの確立"
+      duration: "1 週間"
+    - id: 1
+      name: "MVP"
+      goal: "3 学習モードと進捗永続化の通し動作"
+      duration: "2 週間"
+    - id: 2
+      name: "Content"
+      goal: "CEFR A1〜C2 の語彙・パッセージを満点レンジまで拡充"
+      duration: "継続"
+    - id: 3
+      name: "Native"
+      goal: "Capacitor による iOS / Android パッケージング"
+      duration: "2 週間"
+    - id: 4
+      name: "Sync"
+      goal: "サーバー同期（Supabase 等）への認証・進捗の差し替え"
+      duration: "継続"
+
+policies:
+  forbidden_imports: []
+  forbidden_patterns:
+    - "AKIA[0-9A-Z]{16}"
+  custom:
+    - id: "P-101"
+      rule: "学習コンテンツ（語彙定義・例文・設問）に日本語訳を含めない。第一目的と矛盾するため。"
+    - id: "P-102"
+      rule: "認証はクライアント完結であることを UI 上で明示し、機微情報を扱う用途へ転用しない。"
+    - id: "P-103"
+      rule: "再配布ライセンスが確認できないコンテンツをリポジトリへ取り込まない。"
+
+github:
+  labels:
+    - { name: "epic", color: "7928a1", description: "Epic" }
+    - { name: "story", color: "0075ca", description: "Story" }
+    - { name: "task", color: "e4e669", description: "Task" }
+    - { name: "bug", color: "d73a4a", description: "Bug" }
+    - { name: "content", color: "1d76db", description: "学習コンテンツ" }
+    - { name: "phase:0", color: "c5def5", description: "Phase 0" }
+    - { name: "phase:1", color: "bfd4f2", description: "Phase 1" }
+    - { name: "phase:2", color: "b4c7e7", description: "Phase 2" }
+    - { name: "phase:3", color: "a8b8d9", description: "Phase 3" }
+    - { name: "phase:4", color: "9caacb", description: "Phase 4" }
+    - { name: "priority:high", color: "b60205", description: "高優先度" }
+    - { name: "priority:medium", color: "fbca04", description: "中優先度" }
+    - { name: "priority:low", color: "0e8a16", description: "低優先度" }
+  project_name: "開発ロードマップ"
+
+ai_models:
+  default: "Claude Opus 4.6 (copilot)"
+  overrides: {}

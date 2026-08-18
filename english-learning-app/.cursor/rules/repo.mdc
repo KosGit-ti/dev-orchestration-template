@@ -1,0 +1,12 @@
+---
+description: 本リポジトリの共通入口。詳細は AGENTS.md と ai/*.yml を正本とする
+alwaysApply: true
+---
+
+# Cursor 入口
+
+本 repo の Cursor 向け指示は最小限に留める。共通入口は `AGENTS.md`（Cursor はネイティブに読む）、運用の正本は `ai/*.yml`（command-router / operation-policy / capability-registry / sdd-policy / coherence-workflow / context-index / document-governance / pre-pr-review-policy）である。本ファイルに repo 固有ルールを重複させない。
+
+- 第一目的・安全床・完了ゲート・レビューループは `AGENTS.md` に従う。
+- Orchestrator の行動仕様は `ai/operation-policy.yml` の `orchestrator_behavior` を正本とする。
+- subagent 非搭載ハーネスの論理 tier 近似規範は `AGENTS.md` の該当節に従う（本ファイルに再掲しない）。
