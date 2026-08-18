@@ -55,10 +55,9 @@ def _in_glyph(x: float, y: float, size: int) -> bool:
         return True
     if y >= y1 - thickness:  # 下の横棒
         return True
+    # 中央の横棒。他より短くして E の字形にする。
     middle = (y0 + y1) / 2
-    if abs(y - middle) <= thickness / 2 and x <= x0 + (x1 - x0) * 0.76:  # 中央の横棒
-        return True
-    return False
+    return abs(y - middle) <= thickness / 2 and x <= x0 + (x1 - x0) * 0.76
 
 
 def render(size: int, *, rounded: bool) -> bytes:
@@ -88,8 +87,9 @@ def _chunk(tag: bytes, payload: bytes) -> bytes:
 def write_png(path: Path, size: int, *, rounded: bool) -> None:
     header = struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0)  # RGBA, 8bit
     data = zlib.compress(render(size, rounded=rounded), 9)
+    signature = b"\x89PNG\r\n\x1a\n"
     path.write_bytes(
-        b"\x89PNG\r\n\x1a\n" + _chunk(b"IHDR", header) + _chunk(b"IDAT", data) + _chunk(b"IEND", b"")
+        signature + _chunk(b"IHDR", header) + _chunk(b"IDAT", data) + _chunk(b"IEND", b"")
     )
     print(f"{path.name}: {size}x{size} ({path.stat().st_size} bytes)")
 
