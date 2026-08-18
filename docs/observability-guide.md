@@ -97,6 +97,7 @@ init_tracer(service_name="my-service", enable_console_export=True)
 ```python
 from src.observability.tracing import trace_agent_operation
 
+
 @trace_agent_operation("orchestrator.plan_task")
 def plan_task(task: str) -> str:
     """タスクを分解し計画を立案する。"""
@@ -118,6 +119,7 @@ def plan_task(task: str) -> str:
 ```python
 from src.observability.tracing import trace_tool_execution
 
+
 @trace_tool_execution("shell.run_command")
 def run_shell_command(cmd: str) -> str:
     """シェルコマンドを実行する。"""
@@ -138,6 +140,7 @@ LLM 呼び出し（モデルへのプロンプト送信）をトレースする�
 
 ```python
 from src.observability.tracing import trace_llm_call
+
 
 @trace_llm_call("<model-id>")  # 実行時に解決したモデル ID（正本: ai/capability-registry.yml）
 def call_claude(prompt: str) -> str:

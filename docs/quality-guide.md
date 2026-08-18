@@ -107,6 +107,7 @@ uv sync --extra testing
 ```python
 from hypothesis import given, strategies as st
 
+
 @given(value=st.floats(min_value=0.0, max_value=1e10, allow_nan=False))
 def test_result_is_non_negative(value: float) -> None:
     """任意の有効入力に対して、出力が非負であること。"""
@@ -118,6 +119,7 @@ def test_result_is_non_negative(value: float) -> None:
 
 ```python
 from hypothesis import given, strategies as st, assume
+
 
 @given(x1=st.floats(...), x2=st.floats(...))
 def test_monotonicity(x1: float, x2: float) -> None:
@@ -131,6 +133,7 @@ def test_monotonicity(x1: float, x2: float) -> None:
 ```python
 import pytest
 from hypothesis import given, strategies as st
+
 
 @given(value=st.floats(max_value=-0.001))
 def test_invalid_input_rejected(value: float) -> None:
